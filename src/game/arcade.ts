@@ -36,7 +36,7 @@ import * as renderer from "./engine/renderer";
 import * as hud from "./engine/hud";
 import { installProbe, removeProbe } from "./engine/probe";
 import { emptyArt, loadArt } from "./engine/loader";
-import { GamepadInput, type PadAction } from "./engine/gamepad";
+import { GamepadInput, isNav, type PadAction } from "./engine/gamepad";
 import {
   SIM_DT,
   type Bird,
@@ -466,6 +466,12 @@ export class Arcade {
 
   pollPads() {
     this.pad.poll((action: PadAction, isDown: boolean) => {
+      const inMenu = this.mode === "menu" || this.mode === "result";
+      if (inMenu && !this.calTaps) {
+        if (isDown) this.hooks.onMenuPad?.(action);
+        return;
+      }
+      if (isNav(action)) return;
       if (action === "pause") {
         if (isDown) this.togglePause();
         return;

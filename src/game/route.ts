@@ -1,3 +1,4 @@
+import { PROMO } from "./promo";
 import type { Btn } from "./arcade-types";
 import { keysLabel } from "./keys";
 
@@ -386,10 +387,11 @@ export function auditRoute(): string[] {
 export type RouteCard = { id: string; name: string; note: string; src?: string };
 
 /**
- * Layout notes for the Stage Cards panel. Station, strip and pier show the committed
- * 04_STREET_BACKGROUNDS concept stills; the world-pack stills for the rest
- * (/moss/world/ui/*.png) were never committed, so those cards stay text-only until
- * the art ships (check-assets verifies any src exists).
+ * Layout notes for the Stage Cards panel. Station, strip and pier show the promo
+ * pixel stills (public/moss/promo, see promo.ts); the original 04_STREET_BACKGROUNDS
+ * concept stills stay in the panel via STAGE_CONCEPTS. The van and lighting atlas
+ * have no matching still yet, so those cards stay text-only (check-assets verifies
+ * any src exists).
  */
 export const ROUTE_CARDS: RouteCard[] = [
   {
@@ -400,20 +402,32 @@ export const ROUTE_CARDS: RouteCard[] = [
   {
     id: "hud-station",
     name: "Layout · station",
-    src: "/moss/source/04_STREET_BACKGROUNDS/stage_03_station_concept.png",
-    note: "World-pack station still. In play the station is engine-drawn pixel scenery; its events are give-way, never collisions.",
+    src: PROMO.station,
+    note: "Frankston station promo still. In play the station is engine-drawn pixel scenery; its events are give-way, never collisions.",
   },
   {
     id: "hud-shops",
     name: "Layout · the strip",
-    src: "/moss/source/04_STREET_BACKGROUNDS/stage_02_strip_concept.png",
-    note: "World-pack strip still. In play the shopfronts are engine-drawn; shop props are timed footwork.",
+    src: PROMO.strip,
+    note: "Shop strip promo still. In play the shopfronts are engine-drawn; shop props are timed footwork.",
   },
   {
     id: "hud-pier",
     name: "Layout · the pier",
-    src: "/moss/source/04_STREET_BACKGROUNDS/stage_01_foreshore_concept.png",
-    note: "World-pack foreshore still. The foreshore plates now only frame the pier approach; the pier itself is its own deck over the water, with pilings, rail and lamps.",
+    src: PROMO.pier,
+    note: "Pier promo still. The foreshore plates only frame the pier approach; the pier itself is its own deck over the water, with pilings, rail and lamps.",
+  },
+  {
+    id: "bonus-royal-rave",
+    name: "Bonus · Royal Rave door",
+    src: PROMO.royalRave,
+    note: "The door near the end of the pier. Fill Quake Drive or land eight hits in the lap and it opens onto a short neon segment where every hit scores ×2.",
+  },
+  {
+    id: "fx-mossquake",
+    name: "Mossquake",
+    src: PROMO.mossquake,
+    note: "Full style meter, then A + S + D together (or tap the bar). The shock ring clears the street and pays the biggest burst in the game.",
   },
   {
     id: "atlas",

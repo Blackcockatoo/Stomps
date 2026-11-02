@@ -1,3 +1,4 @@
+import type { PadAction } from "./gamepad";
 import type { Btn } from "../arcade-types";
 import type { ChartNote } from "../chart";
 import type { ClipId, FX } from "../clips";
@@ -60,6 +61,8 @@ export type Hooks = {
   onHeld?: (btn: Btn, down: boolean) => void;
   /** A tap was recorded during tap-along calibration (keyboard, pad, touch or gamepad). */
   onCalTap?: (count: number) => void;
+  /** Gamepad presses while a menu, result card or panel is up (focus + select, never gameplay). */
+  onMenuPad?: (action: PadAction) => void;
   onMode: (mode: Mode) => void;
   onResult: (stats: ResultStats) => void;
   onReady: () => void;

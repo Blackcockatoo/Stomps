@@ -48,5 +48,37 @@ test('foreshore plates only frame the pier approach; the deck is its own scenery
   assert.equal(plateWeight(at('caravan_return', 0.01)), 0);
   const withArt = ROUTE_CARDS.filter((c) => c.src);
   assert.ok(withArt.length >= 3);
-  assert.ok(withArt.every((c) => c.src.startsWith('/moss/source/04_STREET_BACKGROUNDS/')));
+  assert.ok(withArt.every((c) => c.src.startsWith('/moss/promo/')), 'route cards show the promo stills');
+  for (const id of ['hud-station', 'hud-shops', 'hud-pier', 'bonus-royal-rave', 'fx-mossquake']) {
+    assert.ok(withArt.some((c) => c.id === id), `${id} has art`);
+  }
+});
+
+test('promo stills exist, are WebP and stay small; concept stills stay reachable', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { PROMO } = game.promo;
+  const { STAGE_CONCEPTS } = game.clips;
+  for (const src of Object.values(PROMO)) {
+    assert.match(src, /^\/moss\/promo\/[a-z-]+\.webp$/);
+    const file = path.join(__dirname, '..', 'public', src);
+    const head = fs.readFileSync(file).subarray(0, 12).toString('latin1');
+    assert.ok(head.startsWith('RIFF') && head.endsWith('WEBP'), `${src} is WebP`);
+    assert.ok(fs.statSync(file).size < 200 * 1024, `${src} under 200 KB`);
+  }
+  assert.ok(STAGE_CONCEPTS.every((c) => c.src.startsWith('/moss/source/04_STREET_BACKGROUNDS/')));
+});
+
+test('menu focus moves to the nearest control in the pressed direction', () => {
+  const { nearest } = game.menuNav;
+  const box = (x, y) => ({ x, y, w: 100, h: 50 });
+  // three tiles on a row, six small buttons below
+  const tiles = [box(0, 0), box(120, 0), box(240, 0)];
+  const row = [0, 60, 120, 180, 240, 300].map((x) => ({ x, y: 80, w: 50, h: 44 }));
+  const all = [...tiles, ...row];
+  assert.equal(nearest(tiles[0], all, 'right'), 1);
+  assert.equal(nearest(row[5], all, 'right'), -1, 'no wrap past the edge');
+  assert.equal(nearest(tiles[1], all, 'down'), 3 + 2, 'down lands under the tile');
+  assert.equal(nearest(row[0], all, 'up'), 0);
+  assert.equal(nearest(row[3], all, 'left'), 3 + 2);
 });

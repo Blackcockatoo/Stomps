@@ -4,12 +4,26 @@
  *   bottom face (0)  → A / STRIDE      right face (1) → S / STOMP
  *   left face   (2)  → D / STYLE       top face   (3) → MOSSQUAKE
  *   Start       (9)  → pause / resume
+ *   D-pad   (12–15)  → up / down / left / right (menu focus only)
  * Several pads are merged: an action is held while any pad holds it.
  */
 import type { Btn } from "../arcade-types";
 
-export type PadAction = Btn | "quake" | "pause";
-export const PAD_MAP: Readonly<Record<number, PadAction>> = { 0: "A", 1: "B", 2: "C", 3: "quake", 9: "pause" };
+export type NavAction = "up" | "down" | "left" | "right";
+export type PadAction = Btn | "quake" | "pause" | NavAction;
+export const PAD_MAP: Readonly<Record<number, PadAction>> = {
+  0: "A",
+  1: "B",
+  2: "C",
+  3: "quake",
+  9: "pause",
+  12: "up",
+  13: "down",
+  14: "left",
+  15: "right",
+};
+const NAV = new Set<PadAction>(["up", "down", "left", "right"]);
+export const isNav = (action: PadAction): action is NavAction => NAV.has(action);
 
 type PadLike = { connected?: boolean; buttons: readonly { pressed: boolean }[] } | null;
 

@@ -8,7 +8,7 @@ A B$S arcade original, built in Frankston. Original character artwork and signat
 - **Street Strut:** free play through the evolving streets and day/night cycle.
 - **Rhythm Royalty:** timed notes, holds, chords, original synthesised music and sync calibration. Three charts: **EASY** (on the beat, no chords), **NORMAL** (the original chart) and **HARD** (eighth-note runs, hold-and-tap, triple chords). The last pick is remembered.
 - **Footwork Practice:** learn and land the five named combos.
-- Animation Lab, stage cards, field notes and combo guide remain included.
+- Title screen and menu dressed with promo pixel art: TAP TO START, three mode tiles with BEST badges, a secondary row, arrow-key / D-pad focus. Animation Lab, stage cards, field notes and combo guide remain included.
 
 Hold **A** to stride, tap **S** to stomp, use **D** for style. On phones, use the three large pads. Mix actions and time street interactions to build Quake Drive. At full charge, tap the bar or press A+S+D to unleash MOSSQUAKE. Escape pauses. Controls release on focus loss and the game pauses when hidden.
 
@@ -16,7 +16,7 @@ Hold **A** to stride, tap **S** to stomp, use **D** for style. On phones, use th
 
 **Cream hoodie** (Sound, sync & keys → LOOK): no new art. The red hoodie pixels of the original frames are recoloured to shaded cream on a canvas at load time (cached per frame); skin, jacket, sneakers and outlines are left alone and the PNGs on disk are untouched, so the byte-identical asset check still holds.
 
-**Sound, sync & keys** (menu): volume and mute (also the SOUND toggle in the top bar), a tap-along that measures your audio/visual delay and offers a rhythm offset (SYNC −/+ still fine-tune it), and remappable keys. A **gamepad** (standard mapping) also works: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses. Screen readers get short announcements for judgements, combos and milestones through a polite live region.
+**Sound, sync & keys** (menu): volume and mute (also the SOUND toggle in the top bar), a tap-along that measures your audio/visual delay and offers a rhythm offset (SYNC −/+ still fine-tune it), and remappable keys. A **gamepad** (standard mapping) also works: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses. In the menu the D-pad (or arrow keys) moves focus, bottom face / Start selects and right backs out of a panel. Screen readers get short announcements for judgements, combos and milestones through a polite live region.
 
 ## P3.3 — Pier Gauntlet
 
@@ -52,11 +52,17 @@ The site has a web manifest and a build-generated service worker (`dist/sw.js`).
 
 Node 22. `npm ci`, then `npm run check`: TypeScript, the unit suites, the production build and the asset audit.
 
-- `npm test` runs the `node:test` suites in `tests/` (`feel`, `route`, `rhythm`, `storage`, `skin`, `bonus`, `audio`, `view`, `report`), which also cover calibration, gamepad mapping, key remapping, save migration, difficulties, the bonus door and the soundtrack switch.
+- `npm test` runs the `node:test` suites in `tests/` (`feel`, `route` (including promo art and menu focus), `rhythm`, `storage`, `skin`, `bonus`, `audio`, `view`, `report`), which also cover calibration, gamepad mapping, key remapping, save migration, difficulties, the bonus door and the soundtrack switch.
 - `npm run build` writes `dist/`: `index.html` references content-hashed `/assets/arcade-<hash>.js` and `.css` (with external sourcemaps and `assets/manifest.json`); everything in `public/` is copied byte-for-byte. `vercel.json` serves `/assets/*` immutable for a year and `index.html` with `max-age=0, must-revalidate`, so deploys are picked up immediately.
 - The CSS is plain modern CSS bundled and minified by esbuild (no Tailwind step).
 - `npm run smoke` (optional, after a build) drives the built site in headless Chrome under the production CSP, including the service-worker offline reload and phone viewports at 390×844 and 360×740. It uses `CHROME_PATH` or a system Chrome/Chromium and skips if none is found; `SMOKE_SHOTS=dir` saves screenshots. CI deliberately stays unit-only (`npm run check`) so browser and audio timing on shared runners cannot make it flaky.
 
 Import this repository into Vercel. `vercel.json` sets the build command and `dist` output; no environment variables or backend are needed. The production build is a standalone static site. For a local preview after building: `npx serve dist`.
 
-The repository includes every referenced game, lab, UI and stage asset, and the asset check verifies each one is byte-identical in the build. Sprites are deliberately **not** packed into atlases: that would break this guarantee. Instead the loader fetches in priority order (stage, strut frames and notes first, then the other moves, then effects and birds) and reports progress. The station, strip and pier route cards use the committed 04_STREET_BACKGROUNDS concept stills; the world-pack layout stills for the other stops were never committed, so those cards stay text-only until the art is added. The game is also published through the existing MOSS STOMPER Site.
+The repository includes every referenced game, lab, UI and stage asset, and the asset check verifies each one is byte-identical in the build. Sprites are deliberately **not** packed into atlases: that would break this guarantee. Instead the loader fetches in priority order (stage, strut frames and notes first, then the other moves, then effects and birds) and reports progress. The station, strip and pier route cards (plus the Royal Rave door and Mossquake cards) use the promo stills below; the committed 04_STREET_BACKGROUNDS concept stills follow them in Stage Cards as "world pack concepts". The van and lighting-atlas cards stay text-only until matching art is added. The game is also published through the existing MOSS STOMPER Site.
+
+## Promo art
+
+`public/moss/promo/` holds pixel-art stills for the menu and promo surfaces, listed in `src/game/promo.ts`: `splash` (portrait title backdrop), `pier` (landscape title backdrop and Long Way Home tile), `strip`, `station`, `royal-rave` (Rhythm Royalty tile and the bonus-door card), `mossquake`, `damo-red` / `damo-cream` (LOOK previews) and `poster`. They are WebP, downscaled nearest-neighbour from the 720–1280 px renders, and each stays under 200 KB (a unit test enforces this). Like every other game asset they are copied byte-for-byte, byte-checked by `check-assets` and precached by the service worker. `og.jpg` (1200×630), `x-banner.jpg` (1200×264) and the PWA icons (`icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`) are made from the same set. Video clips are not shipped or precached.
+
+Style note: the promo "Damo" (cap, black puffer, red or cream hoodie) is key art only. Moss in play is still the original sprite frames, and the cream hoodie is still a live recolour of the red frames, so the LOOK previews show the vibe rather than the exact in-game pixels. Do not swap promo art into the `public/moss/` sprite folders.

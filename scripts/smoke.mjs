@@ -4,7 +4,7 @@
 //   SMOKE_SHOTS=/tmp/shots npm run smoke   # also writes screenshots
 //
 // Serves dist/ with the headers from vercel.json (including the CSP), then drives
-// the real bundle in headless Chrome: load progress → ready, live region, settings
+// the real bundle in headless Chrome: title screen → load progress → ready, menu arrow focus, live region, settings
 // (mute, remap, persistence across reload), a remapped Street Strut run with pause,
 // Rhythm Royalty (chart chooser), stage-card alt text, the soundtrack/synth switch, service-worker
 // offline reload, phone viewports (390×844, 360×740), no console/CSP errors, and immutable hashed
@@ -67,7 +67,12 @@ try {
   page.on('pageerror', (err) => problems.push('pageerror: ' + (err.stack ?? err.message)));
   page.on('response', (r) => r.status() >= 400 && problems.push(`http ${r.status()}: ${r.url()}`));
   page.on('console', (msg) => msg.type() === 'error' && problems.push('console: ' + msg.text()));
-  const ready = () => page.getByRole('button', { name: /STREET STRUT/ }).and(page.locator(':enabled')).waitFor({ timeout: 20000 });
+  // Every load opens on the title screen; any key dismisses it.
+  const ready = async () => {
+    await page.locator('.attract-gate').waitFor({ timeout: 20000 });
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: /STREET STRUT/ }).and(page.locator(':enabled')).waitFor({ timeout: 20000 });
+  };
   const mode = () => page.locator('.shell').getAttribute('class');
 
   await step('hashed bundles are immutable, index revalidates', async () => {
@@ -81,9 +86,26 @@ try {
 
   await step('boots under the production CSP and reaches ready', async () => {
     await page.goto(origin + '/');
+    await page.getByRole('button', { name: /TAP TO START/ }).waitFor({ timeout: 20000 });
+    await page.waitForFunction(() => document.querySelector('.menu-hero img')?.complete && document.querySelector('.menu-hero img').naturalWidth > 0);
+    await shot(page, '00-title');
     await ready();
     assert.equal(await page.locator('[role="status"][aria-live="polite"]').count(), 1, 'one polite live region');
+    assert.equal(await page.locator('.mode-row .mode-tile').count(), 3, 'three primary mode tiles');
+    assert.equal(await page.locator('.menu-secondary .cab-btn').count(), 6, 'six secondary buttons');
     await shot(page, '01-menu');
+  });
+
+  await step('arrow keys move a visible select cue across the menu', async () => {
+    await page.waitForFunction(() => document.activeElement?.classList.contains('route-start'));
+    await page.keyboard.press('ArrowRight');
+    assert.match(await page.evaluate(() => document.activeElement?.textContent ?? ''), /STREET STRUT/);
+    await page.keyboard.press('ArrowDown');
+    assert.ok(await page.evaluate(() => !!document.activeElement?.closest('.menu-secondary')), 'down reaches the secondary row');
+    await page.keyboard.press('ArrowUp');
+    const outline = await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle);
+    assert.notEqual(outline, 'none', 'focused tile shows an outline');
+    await page.keyboard.press('ArrowLeft');
   });
 
   await step('stage cards carry alt text', async () => {
@@ -180,8 +202,16 @@ try {
       tab.on('console', (msg) => msg.type() === 'error' && problems.push(`phone ${width} console: ` + msg.text()));
       await tab.goto(origin + '/');
       assert.match(await tab.locator('meta[name="viewport"]').getAttribute('content'), /viewport-fit=cover/);
+      await tab.locator('.attract-gate').waitFor({ timeout: 20000 });
+      await shot(tab, `06-phone-${width}-title`);
+      await tab.locator('.attract-gate').tap();
       await tab.locator('.route-start').and(tab.locator(':enabled')).waitFor({ timeout: 20000 });
       await shot(tab, `07-phone-${width}-menu`);
+      const targets = await tab.locator('.menu-card button').evaluateAll((els) => els.map((el) => { const b = el.getBoundingClientRect(); return [el.textContent, b.width, b.height, b.right, b.bottom]; }));
+      for (const [label, w, h, r, b] of targets) {
+        assert.ok(w >= 44 && h >= 44, `menu target ≥44px: ${label} ${w}×${h}`);
+        assert.ok(r <= width && b <= height, `menu target on screen: ${label}`);
+      }
       await tab.locator('.route-start').click();
       await tab.waitForFunction(() => window.__moss?.mode === 'strut');
       await tab.waitForTimeout(600);
