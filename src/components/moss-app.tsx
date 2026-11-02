@@ -233,7 +233,7 @@ export function MossApp() {
     <div className={`shell mode-${mode} scene-${scene}`}>
       <header className="cabinet-header"><span><b>B$S</b> / MOSS STOMPER</span><span className="signal">● NEON STRUT / HYPER DRIVE</span></header>
       {playing ? <section className={`live-hud ${hud.meter >= 1 ? "charged" : ""} ${hud.bonus ? "bonus" : ""}`} aria-label="Live score and style">
-        <div className="score-block"><span className="hud-label">TOTAL RESPECT{hud.bonus ? <b className="bonus-badge">BONUS ×2</b> : null}</span><strong>{hud.score.toLocaleString()}</strong></div>
+        <div className="score-block"><span className="hud-label">TOTAL RESPECT{hud.bonus ? <b className="bonus-badge">BONUS ×{hud.bonusMultiplier ?? 2}</b> : null}</span><strong>{hud.score.toLocaleString()}</strong></div>
         <div className="rank-block"><span className="hud-label">{mode === "strut" ? "STREET FLOW" : "STREET STATUS"}</span><strong>{mode === "strut" ? (hud.recovering ? "RECOVER ON BEAT" : flowName(hud.flowLevel ?? 0)) : styleRank(hud.streak)}</strong></div>
         <div className="chain-block"><span className="hud-label">{mode === "strut" ? "FLOW CHAIN" : "ON BEAT"}</span><strong>×{mode === "strut" ? (hud.flowChain ?? 0) : hud.streak}</strong></div>
         <button type="button" className="style-block" disabled={hud.meter < 1 || mode === "pause"} onClick={() => arcadeRef.current?.unleash()} aria-label={hud.meter >= 1 ? "Unleash Mossquake" : "Build style to unlock Mossquake"}>
@@ -353,7 +353,7 @@ export function MossApp() {
                 {result.kind === "route" ? "HOME IN STYLE" : `ROYALTY / ${DIFFICULTY_INFO[result.difficulty ?? difficulty].label}`}
                 <em>
                   {result.score} · perfect {result.perfect} · fresh {result.fresh} · late {result.late} · stumbled{" "}
-                  {result.stumble} · chain {result.maxCombo}{result.kind === "route" ? ` · FLOW ${result.flowPeak ?? 0}/5` : ""}
+                  {result.stumble} · chain {result.maxCombo}{result.kind === "route" ? ` · FLOW ${result.flowPeak ?? 0}/5 · GOLD ${result.goldenBonus ?? 0}` : ""}
                 </em>
               </h2>
               <div className="result-detail">

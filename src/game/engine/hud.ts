@@ -21,7 +21,7 @@ export function drawHud(g: Arcade) {
   if (g.mode === "strut") {
     const lead = g.runKind === "practice" ? null : g.leadStreet();
     ctx.fillStyle = g.bonus ? "#ff3ea5" : "#b7a89a";
-    ctx.fillText(g.bonus ? `BONUS WORLD ×${BONUS_MULT}  ${phase}` : `${sample.zone.name}  ${phase}`, L, H - 12);
+    ctx.fillText(g.bonus ? `BONUS WORLD ×${g.bonus.multiplier ?? BONUS_MULT}  ${phase}` : `${sample.zone.name}  ${phase}`, L, H - 12);
     if (g.runKind === "route") {
       const progress = Math.min(1, (g.routeScroll() + MOSS_X) / ROUTE_PX);
       ctx.fillStyle = "#192231"; ctx.fillRect(L, H - 27, R - L, 3);
@@ -139,6 +139,7 @@ export function emitHud(g: Arcade, dt: number) {
     g.hooks.onHud?.({ score: Math.round(g.displayScore), meter: g.meter, streak: g.streak,
       gain: g.rewardLife > 0 ? g.gain : 0, serial: g.gainSerial, label: g.callout, bonus: !!g.bonus,
       flowLevel: g.flowState.level, flowChain: g.flowState.chain,
-      recovering: g.mode === "strut" && g.flowState.recoveryUntil > g.now });
+      recovering: g.mode === "strut" && g.flowState.recoveryUntil > g.now,
+      bonusMultiplier: g.bonus?.multiplier });
   }
 }

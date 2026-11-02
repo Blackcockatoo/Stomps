@@ -41,6 +41,8 @@ export function tickStrut(g: Arcade, dt: number) {
   if (lap > g.lap) {
     g.lap = lap;
     g.lapHits = 0;
+    g.pierPerfect = 0;
+    g.pierMiss = 0;
     g.callout = "THE LONG WAY HOME";
     g.calloutLife = 1.5;
     g.groove.combo();
@@ -68,7 +70,7 @@ export function finishRoute(g: Arcade) {
     personalBest: g.bestRoute, newRecord,
     perfect: g.streetPerfect, fresh: g.streetGood, late: 0,
     stumble: g.streetMiss, maxCombo: g.flowState.longest, bonus: g.bonusCleared,
-    flowPeak: g.flowState.peak });
+    flowPeak: g.flowState.peak, goldenBonus: g.goldenCleared });
   g.hooks.onMode("result");
 }
 
@@ -113,7 +115,7 @@ export function streetViews(g: Arcade) {
 
 export function scanStreets(g: Arcade) {
   if (g.bonus) {
-    for (const view of bonusViews(g)) scanOne(g, view.key, view.dist, windowsFor(g.flow, view.spec));
+    for (const view of bonusViews(g)) scanOne(g, view.key, view.dist, windowsFor(g.flow, view.spec), view.spec);
     return;
   }
   const moss = g.mossWorld();
@@ -122,12 +124,13 @@ export function scanStreets(g: Arcade) {
     const local = streetX(spec);
     for (const lapK of [lap - 1, lap, lap + 1]) {
       if (lapK < 0) continue;
-      scanOne(g, `${spec.uid}:${lapK}`, local + lapK * ROUTE_PX - moss, windowsFor(g.flow, streetForLap(spec, lapK, g.runSeed)));
+      const live = streetForLap(spec, lapK, g.runSeed);
+      scanOne(g, `${spec.uid}:${lapK}`, local + lapK * ROUTE_PX - moss, windowsFor(g.flow, live), live);
     }
   }
 }
 
-function scanOne(g: Arcade, key: string, dist: number, win: View["win"]) {
+function scanOne(g: Arcade, key: string, dist: number, win: View["win"], spec: StreetSpec) {
   if (g.streetMarks.has(key)) return;
   if (dist < win.telegraph && dist > -win.good && !g.streetCued.has(key)) {
     g.streetCued.add(key);
@@ -138,6 +141,7 @@ function scanOne(g: Arcade, key: string, dist: number, win: View["win"]) {
   if (dist < -win.good && dist > -480 && g.streetCued.has(key)) {
     g.streetMarks.set(key, { kind: "miss", at: g.now });
     g.streetMiss += 1;
+    if (!g.bonus && spec.zone === "pier") g.pierMiss += 1;
     g.flowState = flowMiss(g.flowState, g.now);
     g.streak = 0;
     g.meter = Math.max(0, g.meter - 0.10);
@@ -197,8 +201,9 @@ export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: num
   g.streetMarks.set(key, { kind, at: g.now });
   if (kind === "perfect") g.streetPerfect += 1;
   else g.streetGood += 1;
+  if (!g.bonus && spec.zone === "pier" && kind === "perfect") g.pierPerfect += 1;
   const variety = [1, 1.1, 1.4, 1.8][Math.min(3, new Set(g.recent).size)] ?? 1;
-  const mult = g.bonus ? BONUS_MULT : 1;
+  const mult = g.bonus ? (g.bonus.multiplier ?? BONUS_MULT) : 1;
   const execution = quality === "technique" ? 1.5 : quality === "alternative" ? 0.72 : 1;
   const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult *
     flowMultiplier(g.flowState) * execution * (closeCall ? 1.35 : 1));
