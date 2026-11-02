@@ -23,7 +23,7 @@ import type { ClipId, FX } from "./clips";
 import { SkinCache, type Frame } from "./skin";
 import type { BonusRun } from "./bonus";
 import { FULL_VIEW, type ViewSpan } from "./view";
-import { CRUISE_PX, auditRoute, type StreetSpec } from "./route";
+import { CRUISE_PX, auditRoute, type StreetQuality, type StreetSpec } from "./route";
 import { bakeWorld, type WorldArt } from "./scenery";
 import { loadSave, resetBests as clearBests, updateSave, clampOffset, type SaveData, type Skin } from "./storage";
 import { setKeyMap } from "./keys";
@@ -610,8 +610,9 @@ export class Arcade {
     street.flushStreet(this);
   }
 
-  settleStreet(spec: StreetSpec, key: string, dist: number, perfectPx: number) {
-    street.settleStreet(this, spec, key, dist, perfectPx);
+  settleStreet(spec: StreetSpec, key: string, dist: number, perfectPx: number,
+    quality: StreetQuality = "main", goodPx?: number) {
+    street.settleStreet(this, spec, key, dist, perfectPx, quality, goodPx);
   }
 
   leadStreet() {
