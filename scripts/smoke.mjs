@@ -6,7 +6,8 @@
 // Serves dist/ with the headers from vercel.json (including the CSP), then drives
 // the real bundle in headless Chrome: load progress → ready, live region, settings
 // (mute, remap, persistence across reload), a remapped Street Strut run with pause,
-// Rhythm Royalty (chart chooser), stage-card alt text, no console/CSP errors, and immutable hashed
+// Rhythm Royalty (chart chooser), stage-card alt text, the soundtrack/synth switch, service-worker
+// offline reload, no console/CSP errors, and immutable hashed
 // assets. If no browser is found it prints SKIP and exits 0.
 //
 // CI stays unit-only (`npm run check`): a headless browser + audio/timing on shared
@@ -29,7 +30,7 @@ if (!existsSync('dist/index.html')) {
 }
 const { chromium } = await import('playwright-core');
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.webmanifest': 'application/manifest+json' };
 const rules = JSON.parse(readFileSync('vercel.json', 'utf8')).headers.map((rule) => ({ re: new RegExp('^' + rule.source + '$'), headers: rule.headers }));
 const server = http.createServer(async (req, res) => {
   const url = decodeURIComponent(new URL(req.url, 'http://local').pathname);
@@ -153,6 +154,21 @@ try {
     assert.equal(saved, 'hard');
     await page.waitForTimeout(1500);
     await shot(page, '05-rhythm');
+  });
+
+  await step('service worker installs and the game reloads offline', async () => {
+    await page.goto(origin + '/');
+    await ready();
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise((r) => navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }));
+    });
+    const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
+    assert.equal(manifestHref, '/manifest.webmanifest');
+    await context.setOffline(true);
+    await page.reload();
+    await ready();
+    await context.setOffline(false);
   });
 
   await step('no console, page or CSP errors', async () => {
