@@ -18,6 +18,18 @@ Hold **A** to stride, tap **S** to stomp, use **D** for style. On phones, use th
 
 **Sound, sync & keys** (menu): volume and mute (also the SOUND toggle in the top bar), a tap-along that measures your audio/visual delay and offers a rhythm offset (SYNC −/+ still fine-tune it), and remappable keys. A **gamepad** (standard mapping) also works: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses. In the menu the D-pad (or arrow keys) moves focus, bottom face / Start selects and right backs out of a panel. Screen readers get short announcements for judgements, combos and milestones through a polite live region.
 
+## P4 — Street School & readable street
+
+**Street School:** your first STREET STRUT (or route) opens a guided Practice of about a minute: stride → STOMP (S) → STYLE (D) → the A+D chord → a deliberate miss, then a recovery hit on the beat → MOSSQUAKE (A+S+D). Each step waits for you, shows progress pips and is announced to screen readers; copy uses your remapped keys. SKIP SCHOOL hands straight over to the run you picked, and STREET SCHOOL in the menu replays it any time. The lesson scores for feedback but never writes bests, lap hits or door progress. Saves gain a `tutorialDone` flag; older saves that already hold a score or route record migrate to "done" (returning players are not forced through it), fresh ones see it once, and the flag survives sanitising.
+
+**Readable cues:** each street object carries a dark plate with large key-glyph pips, an approach ring that shrinks onto the button and turns gold at PERFECT, and a short label (STRIDE / STOMP / STYLE / A+D). A beat pulse under Moss shows the groove (gold while recovering). Coaching copy now matches the rules: a miss stumbles Moss, halves FLOW and drains 10% Quake; Practice hides street objects and never scores them.
+
+**Objectives & zones:** chips across the top track the door (DOOR n/8 OR QUAKE), the pier Golden ★ run and techniques (TECH n/5); they pop on change and stamp ✓ when done. Entering a zone shows a short title card.
+
+**Less blocky street:** all twelve street objects are painted procedurally, baked once with a dark outline, rim light and shade, and given small idle loops; the seagull uses the existing bird sprites. Hits squash, hit-pause, flash and burst; misses wobble red. Zone mid-layers get the same rim/outline bake plus small details (weeds, cables, pavement ticks). No PNG on disk changed, so the byte-identical asset check still holds. **Reduced motion** turns off bounce, idle loops, squash, wobble, card slides and pulse growth; approach rings stay because they carry timing.
+
+Tests: `tests/school.test.cjs` covers the lesson reducer, skip, remapped copy, save migration, a full scripted lesson through the engine, Practice hiding objects, cue maths, prop reactions and objective chips. The smoke run checks the first-run lesson, its 44px SKIP on phones and the hand-over.
+
 ## P3.3 — Pier Gauntlet
 
 Six authored challenges now span the pier approach and deck. A flawless six-PERFECT sequence, with no misses, unlocks the Golden Bonus Door even without full Quake Drive; Golden Bonus events score triple rather than the standard double. The game displays the multiplier on the door, during the bonus and on the result screen. Pier mastery resets per lap, and all extra objects reuse existing assets. Tests cover threshold logic and scoring parity.

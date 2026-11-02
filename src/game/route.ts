@@ -403,7 +403,7 @@ export const ROUTE_CARDS: RouteCard[] = [
     id: "hud-station",
     name: "Layout · station",
     src: PROMO.station,
-    note: "Frankston station promo still. In play the station is engine-drawn pixel scenery; its events are give-way, never collisions.",
+    note: "Frankston station promo still. In play the station is engine-drawn pixel scenery; its events are timed footwork, never collisions.",
   },
   {
     id: "hud-shops",

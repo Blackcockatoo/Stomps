@@ -3,6 +3,7 @@ import type { Arcade } from "../arcade";
 import { ROUTE_PX, gradeAt, triggerLabel, zoneSample } from "../route";
 import { cycleOf } from "../scenery";
 import { BONUS_MULT } from "../bonus";
+import { objectiveChips, type Chip } from "../objectives";
 import { GROUND, H, MOSS_X, W } from "./types";
 
 export function drawHud(g: Arcade) {
@@ -34,6 +35,10 @@ export function drawHud(g: Arcade) {
       ctx.fillText(triggerLabel(lead.spec.trigger), R, narrow ? 58 : 20);
       ctx.textAlign = "left";
     }
+  }
+  if (g.mode === "strut") {
+    drawChips(g, sample.zone.id, L, narrow);
+    drawZoneCard(g);
   }
   if (g.mode === "strut" && g.flowState.recoveryUntil > g.now) {
     const remaining = (g.flowState.recoveryUntil - g.now) / 1.8;
@@ -78,6 +83,97 @@ export function drawHud(g: Arcade) {
     ctx.fillText("HOLD UP", (g.view.left + g.view.right) / 2, 130);
     ctx.textAlign = "left";
   }
+}
+
+const CHIP_TONE: Record<Chip["tone"], string> = { gold: "#f5c518", cyan: "#64e2ed", pink: "#ff3ea5" };
+
+/** Objective strip (top-left): pops when a value changes, stamps ✓ when done. */
+function drawChips(g: Arcade, zoneId: string, left: number, narrow: boolean) {
+  const chips = objectiveChips({
+    runKind: g.runKind, bonus: !!g.bonus, lapHits: g.lapHits, meter: g.meter, zoneId,
+    pierPerfect: g.pierPerfect, pierMiss: g.pierMiss, techniques: g.techniques.size,
+  });
+  if (!chips.length) return;
+  const ctx = g.ctx2d;
+  let x = left;
+  const y = 6;
+  ctx.save();
+  ctx.font = "6px 'Press Start 2P', monospace";
+  ctx.textBaseline = "middle";
+  for (const chip of chips) {
+    const text = narrow ? chip.short : chip.text;
+    const seen = g.chips.get(chip.id);
+    if (!seen || seen.value !== text) g.chips.set(chip.id, { value: text, at: seen ? g.now : -9 });
+    const age = g.now - (g.chips.get(chip.id)?.at ?? -9);
+    const tone = CHIP_TONE[chip.tone];
+    const w = Math.ceil(ctx.measureText(text).width) + 10;
+    const h = 12;
+    const pop = g.reducedMotion || age > 0.3 ? 1 : 1 + Math.sin((age / 0.3) * Math.PI) * 0.22;
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.scale(pop, pop);
+    ctx.fillStyle = chip.done ? tone : "rgba(8, 6, 10, 0.78)";
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeStyle = tone;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-w / 2 + 0.5, -h / 2 + 0.5, w - 1, h - 1);
+    if (!g.reducedMotion && age < 0.45) {
+      ctx.globalAlpha = 1 - age / 0.45;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = chip.done ? "#0c0a0e" : "#f4efe6";
+    ctx.textAlign = "center";
+    ctx.fillText(text, 0, 1);
+    ctx.restore();
+    if (chip.done) {
+      // Rubber-stamp tick lands on completion.
+      const s = g.reducedMotion || age > 0.25 ? 1 : 2 - age / 0.25;
+      ctx.save();
+      ctx.translate(x + w - 2, y + 1);
+      ctx.rotate(-0.25);
+      ctx.scale(s, s);
+      ctx.fillStyle = "#0c0a0e";
+      ctx.fillRect(-5, -5, 10, 10);
+      ctx.fillStyle = "#f5c518";
+      ctx.textAlign = "center";
+      ctx.fillText("✓", 0, 1);
+      ctx.restore();
+    }
+    x += w + 6;
+  }
+  ctx.restore();
+}
+
+/** Zone title card on entry: slides in, holds, fades (1.8s). */
+function drawZoneCard(g: Arcade) {
+  const card = g.zoneCard;
+  if (!card) return;
+  const age = g.now - card.at;
+  if (age < 0 || age > 1.8) return;
+  const ctx = g.ctx2d;
+  const cx = (g.view.left + g.view.right) / 2;
+  const alpha = age < 0.2 ? age / 0.2 : age > 1.4 ? (1.8 - age) / 0.4 : 1;
+  const slide = g.reducedMotion ? 0 : Math.max(0, 1 - age / 0.25) * 24;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, alpha);
+  ctx.font = "12px 'Press Start 2P', monospace";
+  ctx.textAlign = "center";
+  const w = Math.min(g.view.right - g.view.left - 16, ctx.measureText(card.name).width + 36);
+  ctx.fillStyle = "rgba(8, 6, 10, 0.72)";
+  ctx.fillRect(cx - w / 2 - slide, 76, w, 26);
+  ctx.fillStyle = "#e10600";
+  ctx.fillRect(cx - w / 2 - slide, 76, w, 2);
+  ctx.fillStyle = "#f5c518";
+  ctx.fillRect(cx - w / 2 - slide, 100, w, 2);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#120c14";
+  ctx.lineJoin = "round";
+  ctx.strokeText(card.name, cx + slide, 95);
+  ctx.fillStyle = "#f4efe6";
+  ctx.fillText(card.name, cx + slide, 95);
+  ctx.restore();
 }
 
 export function ctxLabel(

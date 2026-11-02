@@ -24,6 +24,7 @@ export function doQuake(g: Arcade, fromRhythm: boolean) {
   g.callout = "MOSSQUAKE";
   g.calloutLife = 1.4;
   g.announce("Mossquake!");
+  g.schoolEvent({ type: "quake" });
   g.seq = [];
   g.grants = [];
 }
@@ -69,7 +70,7 @@ export function award(g: Arcade, label: string, base: number, meterGain: number,
   const strayAction = g.mode === "strut" ? (combo ? 0.08 : 0.18) : 1;
   // One empty-pavement reward per musical beat; holding/repeating cannot farm.
   const beat = Math.floor(g.songTime() / g.groove.beatDur);
-  const eligible = g.runKind !== "practice" && g.runKind !== "route" && (g.mode !== "strut" || beat !== g.actionBeat);
+  const eligible = g.runKind !== "practice" && g.runKind !== "route" && g.runKind !== "school" && (g.mode !== "strut" || beat !== g.actionBeat);
   if (eligible) g.actionBeat = beat;
   const mult =
     (timing === "PERFECT" ? 1.6 : timing === "FRESH" ? 1.25 : timing === "LATE" ? 0.85 : 0.55) *

@@ -92,7 +92,7 @@ try {
     await ready();
     assert.equal(await page.locator('[role="status"][aria-live="polite"]').count(), 1, 'one polite live region');
     assert.equal(await page.locator('.mode-row .mode-tile').count(), 3, 'three primary mode tiles');
-    assert.equal(await page.locator('.menu-secondary .cab-btn').count(), 6, 'six secondary buttons');
+    assert.equal(await page.locator('.menu-secondary .cab-btn').count(), 7, 'seven secondary buttons (SCHOOL first)');
     await shot(page, '01-menu');
   });
 
@@ -147,8 +147,29 @@ try {
     await page.getByRole('button', { name: 'BACK' }).first().click();
   });
 
-  await step('street strut runs on keyboard; Escape pauses and resumes', async () => {
+  await step('first strut opens Street School; stride advances it, cues draw, SKIP hands over to the run', async () => {
     await page.getByRole('button', { name: /STREET STRUT/ }).click();
+    await page.waitForFunction(() => window.__moss?.runKind === 'school');
+    await page.locator('.school-card').waitFor();
+    assert.match(await page.locator('.school-card').textContent(), /STEP 1 \/ 6/);
+    await page.keyboard.down('KeyA');
+    await page.waitForFunction(() => (window.__moss?.school?.step ?? 0) >= 1, null, { timeout: 8000 });
+    await page.keyboard.up('KeyA');
+    await page.waitForFunction(() => (window.__moss?.school?.cues ?? 0) >= 1, null, { timeout: 8000 });
+    await page.waitForTimeout(700);
+    assert.match(await page.locator('.school-card').textContent(), /STEP 2 \/ 6/);
+    await page.waitForFunction(() => /Street School, step 2 of 6/.test(document.querySelector('[role="status"][aria-live="polite"]')?.textContent ?? ''), null, { timeout: 4000 });
+    await shot(page, '03-school');
+    const skip = await page.locator('.school-skip').boundingBox();
+    assert.ok(skip && skip.height >= 44 && skip.width >= 44, 'skip is a ≥44px target');
+    await page.locator('.school-skip').click();
+    await page.waitForFunction(() => window.__moss?.runKind === 'free' && !window.__moss?.school);
+    const saved = JSON.parse(await page.evaluate(() => localStorage.getItem('moss-stomper-save')));
+    assert.equal(saved.tutorialDone, true);
+    assert.equal(await page.locator('.school-card').count(), 0);
+  });
+
+  await step('street strut runs on keyboard; Escape pauses and resumes', async () => {
     await page.waitForFunction(() => document.querySelector('.shell')?.className.includes('mode-strut'));
     await page.keyboard.down('KeyA');
     await page.waitForTimeout(600);
@@ -213,7 +234,13 @@ try {
         assert.ok(r <= width && b <= height, `menu target on screen: ${label}`);
       }
       await tab.locator('.route-start').click();
-      await tab.waitForFunction(() => window.__moss?.mode === 'strut');
+      await tab.waitForFunction(() => window.__moss?.runKind === 'school');
+      await tab.waitForTimeout(400);
+      await shot(tab, `08-phone-${width}-school`);
+      const skip = await tab.locator('.school-skip').boundingBox();
+      assert.ok(skip && skip.width >= 44 && skip.height >= 44 && skip.x >= 0 && skip.x + skip.width <= width && skip.y + skip.height <= height, `school skip ≥44px and on screen (${JSON.stringify(skip)})`);
+      await tab.locator('.school-skip').tap();
+      await tab.waitForFunction(() => window.__moss?.mode === 'strut' && window.__moss?.runKind === 'route');
       await tab.waitForTimeout(600);
       const m = await tab.evaluate(() => {
         const box = (el) => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
@@ -231,9 +258,9 @@ try {
         assert.ok(pad.r <= width && pad.b <= height && pad.l >= 0, 'pad fully on screen');
         for (const hud of m.huds) assert.ok(pad.r <= hud.l || pad.l >= hud.r || pad.b <= hud.t || pad.t >= hud.b, 'pad does not cover the HUD');
       }
-      // Portrait crops the playfield; the canvas HUD must lay out inside the visible slice.
-      assert.ok(m.view.left > 0 && m.view.right < 480 && m.view.left < 132 && m.view.right > 132, `cropped view keeps Moss on screen (${JSON.stringify(m.view)})`);
-      await shot(tab, `08-phone-${width}-route`);
+      // The canvas HUD must lay out inside the visible slice (full span under object-fit: contain, a crop under cover).
+      assert.ok(m.view.left >= 0 && m.view.right <= 480 && m.view.left < 132 && m.view.right > 132, `cropped view keeps Moss on screen (${JSON.stringify(m.view)})`);
+      await shot(tab, `09-phone-${width}-route`);
       await phone.close();
     });
   }

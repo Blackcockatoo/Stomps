@@ -15,3 +15,11 @@ test('report limits no longer claim shipped features are missing', () => {
 test('report is honest that no recorded soundtrack ships', () => {
   assert.match(report.REPORT.limits.join(' '), /No recorded soundtrack ships/);
 });
+
+test('coaching copy matches the P3.1 miss rules (no give-way, misses stumble)', () => {
+  const all = [...report.REPORT.made, ...report.REPORT.tests].join(' ');
+  assert.doesNotMatch(all, /give-way|does not stumble|does not play the stumble/);
+  assert.match(all, /halves FLOW/);
+  assert.match(all, /10% (of the )?Quake/);
+  assert.match(all, /Street School/);
+});

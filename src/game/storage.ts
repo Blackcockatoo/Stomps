@@ -37,6 +37,8 @@ export type SaveData = {
   /** Moss's hoodie: the supplied red, or the runtime cream recolour (added in P2). */
   skin: Skin;
   routeRecords: Record<string, { score: number; grade: string }>;
+  /** Street School finished or skipped (added in P4). Older saves with any score read as done. */
+  tutorialDone: boolean;
 };
 
 export type Skin = "classic" | "cream";
@@ -52,6 +54,7 @@ export function defaultSave(): SaveData {
     difficulty: "normal",
     skin: "classic",
     routeRecords: {},
+    tutorialDone: false,
   };
 }
 
@@ -100,9 +103,10 @@ export function sanitize(raw: unknown): SaveData {
   const base = defaultSave();
   if (!raw || typeof raw !== "object") return base;
   const r = raw as Record<string, any>;
+  const best = { strut: score(r.best?.strut), rhythm: score(r.best?.rhythm), route: score(r.best?.route) };
   return {
     version: SAVE_VERSION,
-    best: { strut: score(r.best?.strut), rhythm: score(r.best?.rhythm), route: score(r.best?.route) },
+    best,
     audioOffset: clampOffset(r.audioOffset),
     audio: { volume: clamp01(r.audio?.volume, base.audio.volume), muted: r.audio?.muted === true },
     keys: cleanKeys(r.keys),
@@ -112,6 +116,9 @@ export function sanitize(raw: unknown): SaveData {
       score: score(r.routeRecords[k].score),
       grade: ["D", "C", "B", "A", "S", "S+", "S++"].includes(r.routeRecords[k].grade) ? r.routeRecords[k].grade : "D",
     }])),
+    // Pre-P4 saves have no flag: a player who already has a score has played, so skip the school.
+    tutorialDone: typeof r.tutorialDone === "boolean" ? r.tutorialDone
+      : best.strut + best.rhythm + best.route > 0 || Object.keys(r.routeRecords ?? {}).length > 0,
   };
 }
 
@@ -130,6 +137,7 @@ export function migrateLegacy(s: StorageLike | null = store()): SaveData {
   save.best.route = score(num(get(s, LEGACY_KEYS.routeHyper))) || score(num(get(s, LEGACY_KEYS.route)) * 10);
   const offset = get(s, LEGACY_KEYS.offset);
   if (offset) save.audioOffset = clampOffset(offset);
+  save.tutorialDone = save.best.strut + save.best.rhythm + save.best.route > 0;
   return save;
 }
 

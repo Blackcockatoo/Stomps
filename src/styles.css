@@ -509,7 +509,7 @@ body > div { height: 100%; }
 .mode-tile:hover { border-color: var(--color-gold); transform: translateY(-1px); }
 .mode-tile:disabled { opacity: .45; cursor: wait; transform: none; }
 .best-badge { position: absolute; top: 6px; left: 6px; padding: 3px 6px; font-family: var(--font-display); font-size: 8px; letter-spacing: .06em; color: #080d12; background: var(--color-gold); border-radius: 2px; }
-.menu-secondary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.menu-secondary { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .menu-secondary .cab-btn { padding: 8px 4px; font-size: 8px; }
 .menu-secondary .cab-btn small { display: none; }
 
@@ -584,7 +584,7 @@ body > div { height: 100%; }
   .best-badge { top: auto; bottom: 4px; left: 4px; font-size: 7px; }
   .mode-tile:focus-visible::after,
   [data-nav] .stage .mode-tile:focus::after { content: "▶"; }
-  .menu-secondary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .menu-secondary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .chart-cards { grid-template-columns: 1fr; }
   .chart-card { min-height: 64px; padding-top: 12px; }
   .chart-card .best-badge { top: 10px; left: auto; bottom: auto; right: 10px; }
@@ -597,4 +597,26 @@ body > div { height: 100%; }
   .attract-pulse { animation: none; }
   .mode-tile { transition: none; }
   .mode-tile:hover { transform: none; }
+}
+
+/* P4: Street School card */
+.school-card { border-left-color: var(--color-stride); }
+.school-card h2 { animation: school-in .35s cubic-bezier(.2, 1.6, .4, 1) both; }
+.school-card .school-line { margin: 6px 0 10px; min-height: 3.2em; }
+.school-pips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 10px; }
+.school-pips span { position: relative; height: 8px; background: #ffffff1f; overflow: hidden; }
+.school-pips span.on { background: var(--color-gold); }
+.school-pips span.now { outline: 1px solid var(--color-stride); }
+.school-pips i { position: absolute; inset: 0; background: var(--color-stride); transform-origin: left; transition: transform .12s linear; }
+.school-card.done { border-left-color: var(--color-gold); }
+.school-card.done h2 { color: var(--color-gold); }
+.school-skip { min-height: 44px; }
+@keyframes school-in { from { transform: translateY(6px) scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (orientation: landscape) and (max-height: 500px) {
+  .school-card .school-line { min-height: 0; margin: 4px 0 6px; }
+  .school-pips { margin-bottom: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .school-card h2 { animation: none; }
+  .school-pips i { transition: none; }
 }

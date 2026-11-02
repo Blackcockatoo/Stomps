@@ -12,6 +12,7 @@ import { REPORT } from "@/game/report";
 import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
 import { DEFAULT_KEYS, type KeyMap, type Skin } from "@/game/storage";
 import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from "@/game/chart";
+import type { SchoolSnapshot } from "@/game/tutorial";
 
 type Panel = "none" | "lab" | "notes" | "hints" | "stages" | "settings" | "rhythm";
 type AudioPrefs = { volume: number; muted: boolean };
@@ -72,7 +73,8 @@ export function MossApp() {
   const [held, setHeld] = useState<Record<Btn, boolean>>({ A: false, B: false, C: false });
   const [best, setBest] = useState<{ strut: number; rhythm: number }>({ strut: 0, rhythm: 0 });
   const [routeBest, setRouteBest] = useState(0);
-  const [runKind, setRunKind] = useState<"free" | "route" | "practice">("free");
+  const [runKind, setRunKind] = useState<"free" | "route" | "practice" | "school">("free");
+  const [school, setSchool] = useState<SchoolSnapshot | null>(null);
   const [lesson, setLesson] = useState(0);
   const [landed, setLanded] = useState<string | null>(null);
   const [mastered, setMastered] = useState<string[]>([]);
@@ -127,6 +129,8 @@ export function MossApp() {
       onHeld: (btn, down) => setHeld((prev) => ({ ...prev, [btn]: down })),
       onCalTap: (count) => onCalTap(count),
       onMenuPad: (action) => uiRef.current.onPad(action),
+      onSchool: setSchool,
+      onSchoolDone: (then) => { setSchool(null); if (then !== "menu") setRunKind(then); },
     });
     arcadeRef.current = arcade;
     const measure = () => {
@@ -319,12 +323,19 @@ export function MossApp() {
   }
   uiRef.current = { attract, panel, onPad: onMenuPad, dismiss: dismissAttract, close: closePanel };
 
-  function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" = "free", chart: Difficulty = difficulty) {
-    setRunKind(kind);
+  function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" | "school" = "free", chart: Difficulty = difficulty) {
+    const arcade = arcadeRef.current;
     setLanded(null);
     setPanel("none");
     setResult(null);
-    if (next === "strut") arcadeRef.current?.playStrut(kind);
+    // First strut ever (or SCHOOL from the menu): run Street School, then carry on into the pick.
+    if (next === "strut" && arcade && (kind === "school" || arcade.needsSchool)) {
+      setRunKind("school");
+      arcade.playSchool(kind === "school" ? "menu" : kind);
+      return;
+    }
+    setRunKind(kind);
+    if (next === "strut") arcade?.playStrut(kind);
     else {
       setDifficulty(chart);
       arcadeRef.current?.playRhythm(chart);
@@ -351,7 +362,7 @@ export function MossApp() {
         <div className="crt" aria-hidden="true" />
         {playing ? <>
           <div className="portrait-title"><span>B$S / STREET SYSTEMS</span><strong>{mode === "rhythm" ? "FIND YOUR FREQUENCY." : "OWN THE PAVEMENT."}</strong></div>
-          <div className={`playguide ${runKind === "practice" ? "practice-hidden" : ""}`}><span className="eyebrow">{mode === "rhythm" ? "STAY IN THE POCKET" : "BUILD YOUR SIGNATURE"}</span><p>{mode === "rhythm" ? "Match each note at the line. Hold the long notes. Keep the groove." : `Hold ${keyLabel("A")} to stride. Tap ${keyLabel("B")} to plant it. Add ${keyLabel("C")} for attitude.`}</p><div><span>{keysLabel(["A", "A", "B"], " · ")}<b>HEEL-TOE HAMMER</b></span><span>{keysLabel(["C", "A", "B"], " · ")}<b>FRANKSTON SHUFFLE</b></span></div><small>{allKeys} / FULL STYLE = MOSSQUAKE</small></div>
+          <div className={`playguide ${runKind === "practice" || runKind === "school" ? "practice-hidden" : ""}`}><span className="eyebrow">{mode === "rhythm" ? "STAY IN THE POCKET" : "BUILD YOUR SIGNATURE"}</span><p>{mode === "rhythm" ? "Match each note at the line. Hold the long notes. Keep the groove." : `Hold ${keyLabel("A")} to stride. Tap ${keyLabel("B")} to plant it. Add ${keyLabel("C")} for attitude.`}</p><div><span>{keysLabel(["A", "A", "B"], " · ")}<b>HEEL-TOE HAMMER</b></span><span>{keysLabel(["C", "A", "B"], " · ")}<b>FRANKSTON SHUFFLE</b></span></div><small>{allKeys} / FULL STYLE = MOSSQUAKE</small></div>
         </> : null}
         <div className="topbar">
           {playing ? (
@@ -456,6 +467,7 @@ export function MossApp() {
                 </button>
               </div>
               <div className="menu-secondary" role="group" aria-label="More">
+                <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "school")}>SCHOOL<span className="sr-only"> · replay the Street School tutorial</span></button>
                 <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "practice")}>PRACTICE</button>
                 <button type="button" className="cab-btn" onClick={() => setPanel("hints")}>COMBOS</button>
                 <button type="button" className="cab-btn" onClick={() => setPanel("stages")}>STAGE CARDS</button>
@@ -496,6 +508,15 @@ export function MossApp() {
           </div>
         ) : null}
 
+        {playing && runKind === "school" && school ? <div className={`practice-card school-card ${school.finished ? "done" : ""}`}>
+          <span className="eyebrow">STREET SCHOOL · {school.finished ? "DONE" : `STEP ${school.step} / ${school.total}`}</span>
+          <h2 key={school.title}>{school.title}</h2>
+          <p className="school-line">{school.line}</p>
+          <div className="school-pips" aria-hidden="true">
+            {Array.from({ length: school.total }, (_, i) => <span key={i} className={i < school.step - 1 || school.finished ? "on" : i === school.step - 1 ? "now" : ""}>{i === school.step - 1 && !school.finished ? <i style={{ transform: `scaleX(${school.progress})` }} /> : null}</span>)}
+          </div>
+          {school.finished ? null : <button type="button" className="cab-btn school-skip" onClick={() => arcadeRef.current?.skipSchool()}>SKIP SCHOOL</button>}
+        </div> : null}
         {playing && runKind === "practice" ? <div className="practice-card" aria-live="polite">
           <span className="eyebrow">FOOTWORK / {mastered.length} OF {COMBOS.length} MOVES LANDED</span>
           <h2>{COMBOS[lesson].name}</h2>
@@ -642,11 +663,11 @@ function Hints() {
       <h3>THE LONG WAY HOME</h3>
       <p>
         Every strut starts at the van and walks the crossing, the station, the strip, the pier, then home. A gold pip
-        means the window is open. Early or late pays nothing and does not trip Moss. People and birds are not targets.
+        means the window is open: hit it as the ring closes on the button. A missed event stumbles Moss, halves FLOW and drains 10% Quake. Tap on the beat straight after to recover. People and birds are not targets.
       </p>
       <ul>
         <li>Crossing and gulls — {keyLabel("B")}</li>
-        <li>Blanket, puddle, give-way — {keyLabel("A")}</li>
+        <li>Blanket, puddle, commuter — {keyLabel("A")}</li>
         <li>Paper, bin, cloud, lamp — {keyLabel("C")}</li>
         <li>Busker and skateboard — {keysLabel(["A", "C"])}</li>
         <li>Trolley — {keysLabel(["A", "B"])}</li>

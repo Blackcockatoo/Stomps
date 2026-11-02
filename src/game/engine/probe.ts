@@ -14,6 +14,9 @@ export function installProbe(g: Arcade) {
   const self = g;
   const probe = {
     get mode() { return self.mode; },
+    get runKind() { return self.runKind; },
+    /** Street School progress, or null outside the lesson. */
+    get school() { return self.school ? { step: self.school.state.index, finished: self.school.state.finished, cues: self.school.cues.length } : null; },
     get score() { return self.score; },
     get meter() { return self.meter; },
     get clip() { return self.currentClip(); },

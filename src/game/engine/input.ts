@@ -80,6 +80,7 @@ export function commitSingle(g: Arcade, btn: Btn) {
     g.calloutLife = 0.9;
     g.announce("Flow recovered");
     g.groove.combo();
+    g.schoolEvent({ type: "recover" });
   }
   g.seq.push({ btn, t: g.now });
   g.seq = g.seq.filter((s) => g.now - s.t < 2.6);
