@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node scripts/build-arcade.mjs",
     "typecheck": "tsc -p tsconfig.arcade.json",
-    "test": "node scripts/arcade-feel.test.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "smoke": "node scripts/smoke.mjs",
     "check": "npm run typecheck && npm test && npm run build && node scripts/check-assets.mjs"
   },
   "dependencies": {
@@ -14,10 +15,11 @@
     "react-dom": "19.2.3"
   },
   "devDependencies": {
-    "esbuild": "0.27.2",
-    "typescript": "5.9.3",
     "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3"
+    "@types/react-dom": "19.2.3",
+    "esbuild": "0.27.2",
+    "playwright-core": "1.64.1",
+    "typescript": "5.9.3"
   },
   "engines": {
     "node": "22.x"
