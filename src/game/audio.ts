@@ -7,7 +7,28 @@ export class Groove {
   private nextStep = 0;
   private stepIndex = 0;
   running = false;
+  /** Tap-along calibration: the loop is replaced by a plain beat click. */
+  metronome = false;
   private master: GainNode | null = null;
+  private volume = 0.8;
+  private muted = false;
+  /** Overall level at volume 1. The pre-P1 fixed master was 0.22 (volume 0.8 here is the same level). */
+  static readonly MAX_GAIN = 0.275;
+
+  /** Player volume 0..1 and mute; applied immediately with a short ramp to avoid clicks. */
+  setLevel(volume: number, muted: boolean) {
+    this.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 0.8));
+    this.muted = muted;
+    const master = this.master;
+    if (master && this.ctx) {
+      master.gain.cancelScheduledValues(this.ctx.currentTime);
+      master.gain.setTargetAtTime(this.gainTarget(), this.ctx.currentTime, 0.015);
+    }
+  }
+
+  gainTarget() {
+    return this.muted ? 0 : Groove.MAX_GAIN * this.volume;
+  }
 
   get stepDur() {
     return 60 / this.bpm / 2;
@@ -35,14 +56,15 @@ export class Groove {
       }
       this.noise = buffer;
       const master = ctx.createGain();
-      master.gain.value = 0.22;
+      master.gain.value = this.gainTarget();
       master.connect(ctx.destination);
       this.master = master;
     }
     if (this.ctx.state === "suspended") void this.ctx.resume();
   }
 
-  start() {
+  start(metronome = false) {
+    this.metronome = metronome;
     this.unlock();
     if (!this.ctx) return;
     this.startAt = this.ctx.currentTime + 0.06;
@@ -120,6 +142,11 @@ export class Groove {
 
   private schedule(step: number, when: number) {
     const s = step % 16;
+    if (this.metronome) {
+      // One click per beat, accented on the bar, nothing else to listen past.
+      if (s % 2 === 0) this.tone(when, s % 8 === 0 ? 1320 : 880, 0.05, "square", 0.16);
+      return;
+    }
     if (s % 4 === 0) this.tone(when, 150, 0.12, "sine", 0.55, 48);
     if (s === 4 || s === 12) {
       this.burst(when, 0.14, 0.28, 900);

@@ -1,12 +1,17 @@
 import { styleRank } from "@/game/feel";
 import { useEffect, useRef, useState } from "react";
-import { Arcade, COMBOS, type Btn, type Mode, type ResultStats, type LiveHud } from "@/game/arcade";
+import { Arcade, COMBOS, CALIBRATION_MIN_TAPS, CALIBRATION_WARMUP, type Btn, type Calibration, type Mode, type ResultStats, type LiveHud } from "@/game/arcade";
 import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, type ClipInfo } from "@/game/clips";
 import { ROUTE_CARDS } from "@/game/route";
 import { REPORT } from "@/game/report";
-import { keyBtn, keyLabel, keysLabel } from "@/game/keys";
+import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
+import { DEFAULT_KEYS, type KeyMap } from "@/game/storage";
 
-type Panel = "none" | "lab" | "notes" | "hints" | "stages";
+type Panel = "none" | "lab" | "notes" | "hints" | "stages" | "settings";
+type AudioPrefs = { volume: number; muted: boolean };
+/** Taps collected per calibration attempt (the first CALIBRATION_WARMUP are ignored). */
+const CAL_TAPS = 12;
+const ALL: Btn[] = ["A", "B", "C"];
 
 const PADS: { id: Btn; name: string; idle: string; down: string; cls: string }[] = [
   { id: "A", name: "STRIDE", idle: UI.aIdle, down: UI.aDown, cls: "a" },
@@ -31,6 +36,33 @@ export function MossApp() {
   const [landed, setLanded] = useState<string | null>(null);
   const [mastered, setMastered] = useState<string[]>([]);
   const [result, setResult] = useState<ResultStats | null>(null);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [announcement, setAnnouncement] = useState("");
+  const [audio, setAudio] = useState<AudioPrefs>({ volume: 0.8, muted: false });
+  const [keymap, setKeymap] = useState<KeyMap>({ ...DEFAULT_KEYS });
+  const [offset, setOffset] = useState(0);
+  /** Which action is waiting for a new key (key remap), if any. */
+  const [capture, setCapture] = useState<Btn | null>(null);
+  const captureRef = useRef<Btn | null>(null);
+  captureRef.current = capture;
+  const [calTaps, setCalTaps] = useState<number | null>(null);
+  const calRef = useRef(false);
+  calRef.current = calTaps !== null;
+  const [calResult, setCalResult] = useState<Calibration | "short" | null>(null);
+  const announceRef = useRef({ last: 0, timer: 0, flip: false });
+
+  /** Screen-reader announcements, coalesced so fast play never floods the queue. */
+  const announce = (text: string) => {
+    const state = announceRef.current;
+    window.clearTimeout(state.timer);
+    const wait = Math.max(0, 450 - (performance.now() - state.last));
+    state.timer = window.setTimeout(() => {
+      state.last = performance.now();
+      // Alternate a trailing no-break space so a repeated phrase is still re-read.
+      state.flip = !state.flip;
+      setAnnouncement(text + (state.flip ? "\u00a0" : ""));
+    }, wait);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,11 +76,35 @@ export function MossApp() {
       onReady: () => setReady(true),
       onError: setError,
       onBest: setBest,
+      onProgress: (done, total) => setProgress({ done, total }),
+      onAnnounce: announce,
+      onHeld: (btn, down) => setHeld((prev) => ({ ...prev, [btn]: down })),
+      onCalTap: (count) => onCalTap(count),
     });
     arcadeRef.current = arcade;
+    setAudio({ ...arcade.save.audio });
+    setKeymap({ ...arcade.save.keys });
+    setOffset(arcade.audioOffset);
     arcade.start();
     const onKey = (event: KeyboardEvent) => {
+      const waiting = captureRef.current;
+      if (waiting) {
+        // Key remap capture: the next key binds; Escape cancels.
+        if (event.type !== "keydown") return;
+        event.preventDefault();
+        if (event.code !== "Escape" && !RESERVED_CODES.has(event.code)) {
+          arcade.setKeys(rebind(arcade.save.keys, waiting, event.code));
+          setKeymap({ ...arcade.save.keys });
+        }
+        setCapture(null);
+        return;
+      }
       const btn = keyBtn(event.code);
+      if (calRef.current && btn) {
+        event.preventDefault();
+        if (event.type === "keydown" && !event.repeat) tapCalibration();
+        return;
+      }
       if (event.type === "keydown") {
         if (event.code === "Escape") {
           event.preventDefault();
@@ -79,6 +135,7 @@ export function MossApp() {
     window.addEventListener("keyup", onKey);
     window.addEventListener("blur", release);
     return () => {
+      window.clearTimeout(announceRef.current.timer);
       arcade.destroy();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("keydown", onKey);
@@ -88,6 +145,52 @@ export function MossApp() {
   }, []);
 
   const playing = mode === "strut" || mode === "rhythm" || mode === "pause";
+  const loadPct = progress.total ? Math.floor((progress.done / progress.total) * 100) : 0;
+  const allKeys = keysLabel(ALL, " + ");
+
+  function tapCalibration() {
+    arcadeRef.current?.calibrationTap();
+  }
+
+  /** Every recorded tap (any input) lands here; the attempt ends after CAL_TAPS. */
+  function onCalTap(count: number) {
+    const arcade = arcadeRef.current;
+    if (!arcade) return;
+    setCalTaps(count);
+    if (count >= CAL_TAPS) {
+      const measured = arcade.stopCalibration();
+      setCalTaps(null);
+      setCalResult(measured ?? "short");
+      announce(measured ? `Measured ${ms(measured.offset)}` : "Not enough taps");
+    }
+  }
+
+  function startCalibration() {
+    setCalResult(null);
+    arcadeRef.current?.startCalibration();
+    setCalTaps(0);
+  }
+
+  function cancelCalibration() {
+    arcadeRef.current?.stopCalibration();
+    setCalTaps(null);
+  }
+
+  function changeAudio(next: AudioPrefs) {
+    arcadeRef.current?.setAudio(next.volume, next.muted);
+    setAudio(next);
+  }
+
+  function changeOffset(seconds: number) {
+    arcadeRef.current?.setAudioOffset(seconds);
+    setOffset(arcadeRef.current?.audioOffset ?? 0);
+  }
+
+  function closePanel() {
+    if (calRef.current) cancelCalibration();
+    setCapture(null);
+    setPanel("none");
+  }
 
   function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" = "free") {
     setRunKind(kind);
@@ -108,16 +211,17 @@ export function MossApp() {
         <button type="button" className="style-block" disabled={hud.meter < 1 || mode === "pause"} onClick={() => arcadeRef.current?.unleash()} aria-label={hud.meter >= 1 ? "Unleash Mossquake" : "Build style to unlock Mossquake"}>
           <div className="meter-caption"><span>{hud.meter >= 1 ? "MOSSQUAKE / TAP TO UNLEASH" : "QUAKE DRIVE / CHARGE YOUR STYLE"}</span><b>{Math.round(hud.meter*100)}<small>%</small></b></div>
           <div className="style-track" role="progressbar" aria-label="Quake drive" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(hud.meter*100)}><div className="meter-fill" style={{transform:`scaleX(${hud.meter})`}} /><div className="meter-grid" /></div>
-          <div className="meter-footer"><span>STRIDE + STOMP + ATTITUDE</span><span>{hud.meter >= 1 ? "A + S + D / OR TAP" : "KEEP IT VARIED. KEEP IT MOVING."}</span></div>
+          <div className="meter-footer"><span>STRIDE + STOMP + ATTITUDE</span><span>{hud.meter >= 1 ? `${allKeys} / OR TAP` : "KEEP IT VARIED. KEEP IT MOVING."}</span></div>
         </button>
       </section> : null}
       <div className="stage">
         <canvas ref={canvasRef} width={480} height={270} aria-label="Moss Stomper arcade playfield" />
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
         {playing && hud.gain > 0 ? <div key={hud.serial} className={`reward-burst ${hud.gain >= 10000 ? "massive" : ""}`} aria-hidden="true"><span>{hud.gain >= 10000 ? "BLOCK SHAKER" : hud.gain >= 4000 ? "BIG ENERGY" : "RESPECT EARNED"}</span><strong>+{hud.gain.toLocaleString()}</strong><small>{hud.label || "STAY IN THE GROOVE"}</small></div> : null}
         <div className="crt" aria-hidden="true" />
         {playing ? <>
           <div className="portrait-title"><span>B$S / STREET SYSTEMS</span><strong>{mode === "rhythm" ? "FIND YOUR FREQUENCY." : "OWN THE PAVEMENT."}</strong></div>
-          <div className={`playguide ${runKind === "practice" ? "practice-hidden" : ""}`}><span className="eyebrow">{mode === "rhythm" ? "STAY IN THE POCKET" : "BUILD YOUR SIGNATURE"}</span><p>{mode === "rhythm" ? "Match each note at the line. Hold the long notes. Keep the groove." : "Hold A to stride. Tap S to plant it. Add D for attitude."}</p><div><span>A · A · S<b>HEEL-TOE HAMMER</b></span><span>D · A · S<b>FRANKSTON SHUFFLE</b></span></div><small>A + S + D / FULL STYLE = MOSSQUAKE</small></div>
+          <div className={`playguide ${runKind === "practice" ? "practice-hidden" : ""}`}><span className="eyebrow">{mode === "rhythm" ? "STAY IN THE POCKET" : "BUILD YOUR SIGNATURE"}</span><p>{mode === "rhythm" ? "Match each note at the line. Hold the long notes. Keep the groove." : `Hold ${keyLabel("A")} to stride. Tap ${keyLabel("B")} to plant it. Add ${keyLabel("C")} for attitude.`}</p><div><span>{keysLabel(["A", "A", "B"], " · ")}<b>HEEL-TOE HAMMER</b></span><span>{keysLabel(["C", "A", "B"], " · ")}<b>FRANKSTON SHUFFLE</b></span></div><small>{allKeys} / FULL STYLE = MOSSQUAKE</small></div>
         </> : null}
         <div className="topbar">
           {playing ? (
@@ -137,6 +241,15 @@ export function MossApp() {
               </button>
             </>
           ) : null}
+          <button
+            type="button"
+            className="icon-btn"
+            aria-pressed={audio.muted}
+            aria-label={audio.muted ? "Sound muted. Unmute" : "Mute sound"}
+            onClick={() => changeAudio({ ...audio, muted: !audio.muted })}
+          >
+            {audio.muted ? "MUTED" : "SOUND"}
+          </button>
           <button
             type="button"
             className="icon-btn"
@@ -165,7 +278,14 @@ export function MossApp() {
                 {routeBest ? ` Best home run ${routeBest}.` : ""}
                 {best.strut || best.rhythm ? ` Best strut ${best.strut}. Best royalty ${best.rhythm}.` : ""}
               </p>
-              {!ready ? <p className="hint-row">Loading the block…</p> : null}
+              {!ready && !error ? (
+                <div className="load-row">
+                  <p className="hint-row">Loading the block… {loadPct}%</p>
+                  <div className="load-bar" role="progressbar" aria-label="Loading assets" aria-valuemin={0} aria-valuemax={100} aria-valuenow={loadPct}>
+                    <div style={{ transform: `scaleX(${loadPct / 100})` }} />
+                  </div>
+                </div>
+              ) : null}
               {error ? <p className="hint-row">{error}</p> : null}
               <div className="menu-actions">
                 <button type="button" className="cab-btn primary route-start" disabled={!ready} onClick={() => go("strut", "route")}>
@@ -189,6 +309,9 @@ export function MossApp() {
                 </button>
                 <button type="button" className="cab-btn" onClick={() => setPanel("hints")}>
                   COMBOS
+                </button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("settings")}>
+                  SOUND, SYNC &amp; KEYS
                 </button>
               </div>
             </div>
@@ -232,13 +355,42 @@ export function MossApp() {
         </div> : null}
         {panel !== "none" ? (
           <div className="sheet">
-            <button type="button" className="cab-btn" onClick={() => setPanel("none")}>
+            <button type="button" className="cab-btn" onClick={closePanel}>
               BACK
             </button>
             {panel === "lab" ? <Lab /> : null}
             {panel === "hints" ? <Hints /> : null}
             {panel === "notes" ? <Notes /> : null}
             {panel === "stages" ? <Stages /> : null}
+            {panel === "settings" ? (
+              <Settings
+                audio={audio}
+                onAudio={changeAudio}
+                keymap={keymap}
+                capture={capture}
+                onCapture={setCapture}
+                onResetKeys={() => {
+                  arcadeRef.current?.setKeys({ ...DEFAULT_KEYS });
+                  setKeymap({ ...DEFAULT_KEYS });
+                }}
+                offset={offset}
+                onOffset={changeOffset}
+                calTaps={calTaps}
+                calResult={calResult}
+                onCalStart={startCalibration}
+                onCalTap={tapCalibration}
+                onCalCancel={cancelCalibration}
+                onCalApply={(value) => {
+                  changeOffset(value);
+                  setCalResult(null);
+                  announce(`Sync set to ${ms(value)}`);
+                }}
+                onResetBests={() => {
+                  arcadeRef.current?.resetBests();
+                  announce("Best scores reset");
+                }}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -295,7 +447,7 @@ export function MossApp() {
         </div>
       ) : (
         <div className="dock">
-          <p className="hint-row">A / STRIDE　 S / STOMP　 D / STYLE · BUILT IN FRANKSTON</p>
+          <p className="hint-row">{keyLabel("A")} / STRIDE　 {keyLabel("B")} / STOMP　 {keyLabel("C")} / STYLE · BUILT IN FRANKSTON</p>
         </div>
       )}
     </div>
@@ -324,7 +476,9 @@ function Hints() {
       </ul>
       <p>
         On-beat hits pay more. Repeating one button pays less each time, and the street does not stop. Chords only
-        count when the buttons land together. Rhythm has SYNC − / + if the notes feel early or late.
+        count when the buttons land together. Rhythm has SYNC − / + if the notes feel early or late, and Sound, Sync
+        &amp; Keys has a tap-along calibration and key remapping. A gamepad works too: bottom face button strides, right
+        stomps, left styles, top unleashes MOSSQUAKE, Start pauses.
       </p>
       <h3>THE LONG WAY HOME</h3>
       <p>
@@ -339,6 +493,120 @@ function Hints() {
         <li>Trolley — {keysLabel(["A", "B"])}</li>
       </ul>
     </>
+  );
+}
+
+function ms(seconds: number) {
+  const value = Math.round(seconds * 1000);
+  return `${value > 0 ? "+" : ""}${value} ms`;
+}
+
+const ACTION_NAME: Record<Btn, string> = { A: "STRIDE", B: "STOMP", C: "STYLE" };
+
+function Settings(props: {
+  audio: AudioPrefs;
+  onAudio: (next: AudioPrefs) => void;
+  keymap: KeyMap;
+  capture: Btn | null;
+  onCapture: (btn: Btn | null) => void;
+  onResetKeys: () => void;
+  offset: number;
+  onOffset: (seconds: number) => void;
+  calTaps: number | null;
+  calResult: Calibration | "short" | null;
+  onCalStart: () => void;
+  onCalTap: () => void;
+  onCalCancel: () => void;
+  onCalApply: (seconds: number) => void;
+  onResetBests: () => void;
+}) {
+  const { audio, keymap, capture, calTaps, calResult } = props;
+  const [confirmReset, setConfirmReset] = useState(false);
+  const volume = Math.round(audio.volume * 100);
+  return (
+    <div className="settings">
+      <h2>SOUND, SYNC &amp; KEYS</h2>
+      <h3>SOUND</h3>
+      <div className="setting-row">
+        <label htmlFor="moss-volume">VOLUME {volume}%</label>
+        <input
+          id="moss-volume"
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={volume}
+          onChange={(event) => props.onAudio({ ...audio, volume: Number(event.target.value) / 100 })}
+        />
+        <button type="button" className="cab-btn" aria-pressed={audio.muted} onClick={() => props.onAudio({ ...audio, muted: !audio.muted })}>
+          {audio.muted ? "UNMUTE" : "MUTE"}
+        </button>
+      </div>
+
+      <h3>RHYTHM SYNC</h3>
+      <p>
+        Current offset {ms(props.offset)}. If notes feel early or late, run the tap-along: listen to the click and tap
+        any game key, or the TAP pad, on every beat. The first {CALIBRATION_WARMUP} taps are ignored.
+      </p>
+      {calTaps !== null ? (
+        <div className="calibrate" aria-live="polite">
+          <button type="button" className="cab-btn gold tap-pad" onPointerDown={(event) => { event.preventDefault(); props.onCalTap(); }} onClick={(event) => { if (event.detail === 0) props.onCalTap(); }}>
+            TAP ON THE BEAT <small>{calTaps} / {CAL_TAPS}</small>
+          </button>
+          <button type="button" className="cab-btn" onClick={props.onCalCancel}>CANCEL</button>
+        </div>
+      ) : (
+        <div className="setting-row">
+          <button type="button" className="cab-btn gold" onClick={props.onCalStart}>START TAP-ALONG</button>
+          <button type="button" className="cab-btn" onClick={() => props.onOffset(props.offset - 0.01)}>SYNC −</button>
+          <button type="button" className="cab-btn" onClick={() => props.onOffset(props.offset + 0.01)}>SYNC +</button>
+          <button type="button" className="cab-btn" onClick={() => props.onOffset(0)}>ZERO</button>
+        </div>
+      )}
+      {calResult === "short" ? <p>Not enough taps to measure (need {CALIBRATION_MIN_TAPS} after the warm-up). Try again.</p> : null}
+      {calResult && calResult !== "short" ? (
+        <div className="setting-row">
+          <p>
+            Measured {ms(calResult.offset)}{" "}
+            {calResult.reliable ? "· steady taps." : "· taps were uneven, so this is a rough guess. Try again for a better read."}
+          </p>
+          <button type="button" className="cab-btn primary" onClick={() => props.onCalApply(calResult.offset)}>USE {ms(calResult.offset)}</button>
+        </div>
+      ) : null}
+
+      <h3>KEYS</h3>
+      <p>Pick an action, then press the key you want. Escape cancels. Binding a key that is in use swaps the two.</p>
+      <div className="setting-row">
+        {ALL.map((btn) => (
+          <button
+            key={btn}
+            type="button"
+            className={`cab-btn ${capture === btn ? "gold" : ""}`}
+            aria-label={capture === btn ? `Press a key for ${ACTION_NAME[btn]}` : `${ACTION_NAME[btn]} is ${codeLabel(keymap[btn])}. Change`}
+            onClick={() => props.onCapture(capture === btn ? null : btn)}
+          >
+            {ACTION_NAME[btn]}: {capture === btn ? "PRESS A KEY…" : codeLabel(keymap[btn])}
+          </button>
+        ))}
+        <button type="button" className="cab-btn" onClick={props.onResetKeys}>DEFAULT (A S D)</button>
+      </div>
+      <p>Gamepad: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses.</p>
+
+      <h3>SAVED BESTS</h3>
+      <p>Bests, sync, sound and keys are saved in this browser only.</p>
+      <div className="setting-row">
+        {confirmReset ? (
+          <>
+            <button type="button" className="cab-btn primary" onClick={() => { props.onResetBests(); setConfirmReset(false); }}>
+              YES, RESET BESTS
+            </button>
+            <button type="button" className="cab-btn" onClick={() => setConfirmReset(false)}>KEEP THEM</button>
+          </>
+        ) : (
+          <button type="button" className="cab-btn" onClick={() => setConfirmReset(true)}>RESET BESTS…</button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -385,14 +653,14 @@ function Stages() {
       {ROUTE_CARDS.map((stage) => (
         <div key={stage.id}>
           <h3>{stage.name}</h3>
-          <img className="stage-card" src={stage.src} alt="" />
+          {stage.src ? <img className="stage-card" src={stage.src} alt={`${stage.name}: route layout reference still`} /> : null}
           <p>{stage.note}</p>
         </div>
       ))}
       {STAGE_CONCEPTS.map((stage) => (
         <div key={stage.id}>
           <h3>{stage.name}</h3>
-          <img className="stage-card" src={stage.src} alt="" />
+          <img className="stage-card" src={stage.src} alt={`${stage.name}: world pack concept still`} />
           <p>{stage.note}</p>
         </div>
       ))}
