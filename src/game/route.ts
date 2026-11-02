@@ -332,9 +332,10 @@ export function auditRoute(): string[] {
 export type RouteCard = { id: string; name: string; note: string; src?: string };
 
 /**
- * Layout notes for the Stage Cards panel. The world-pack stills these described
- * (/moss/world/ui/*.png) were never committed, so the cards are text-only until
- * the art ships; add `src` back then (check-assets verifies any src exists).
+ * Layout notes for the Stage Cards panel. Station, strip and pier show the committed
+ * 04_STREET_BACKGROUNDS concept stills; the world-pack stills for the rest
+ * (/moss/world/ui/*.png) were never committed, so those cards stay text-only until
+ * the art ships (check-assets verifies any src exists).
  */
 export const ROUTE_CARDS: RouteCard[] = [
   {
