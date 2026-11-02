@@ -14,6 +14,12 @@ import { ROUTE_PX, STREETS, ZONES, type StreetId, type StreetSpec } from "./rout
 export const DOOR_AT = 0.93;
 export const DOOR_HITS = 8;
 export const BONUS_MULT = 2;
+export const GOLDEN_MULT = 3;
+export const PIER_CROWN_HITS = 6;
+/** All six pier encounters must be judged PERFECT; a missed one cancels the crown. */
+export function pierCrown(perfect: number, missed: number): boolean {
+  return perfect >= PIER_CROWN_HITS && missed === 0;
+}
 /** Gap between bonus events; the route audit needs > ~165px at a 150px/s sprint. */
 export const BONUS_GAP = 190;
 /** Distance from the door to the first bonus event. */
@@ -39,6 +45,8 @@ export type BonusRun = {
   /** World x of the first bonus event. */
   start: number;
   specs: StreetSpec[];
+  /** Standard 2x or skill-earned Golden 3x; optional for old test fixtures. */
+  multiplier?: number;
 };
 
 export type BonusView = {
@@ -82,7 +90,7 @@ export function tickDoor(g: Arcade) {
   const door = doorWorld(lap);
   const dist = door - moss;
   if (g.doorDone.has(lap)) return;
-  const open = doorOpen(g.meter, g.lapHits);
+  const open = doorOpen(g.meter, g.lapHits) || pierCrown(g.pierPerfect, g.pierMiss);
   if (dist <= DOOR_HINT_PX && dist > 0 && !g.doorHinted.has(lap)) {
     g.doorHinted.add(lap);
     g.callout = open ? "BONUS DOOR OPEN" : "DOOR SHUT";
@@ -98,15 +106,17 @@ export function tickDoor(g: Arcade) {
 export function enterBonus(g: Arcade, lap: number) {
   const serial = ++g.bonusSerial;
   const moss = g.mossWorld();
+  const multiplier = pierCrown(g.pierPerfect, g.pierMiss) ? GOLDEN_MULT : BONUS_MULT;
   g.bonus = {
     serial,
     returnScroll: doorWorld(lap) - g.mossX() + 24,
     start: moss + BONUS_LEAD,
     specs: bonusSpecs(),
+    multiplier,
   };
-  g.callout = `BONUS WORLD ×${BONUS_MULT}`;
+  g.callout = multiplier === GOLDEN_MULT ? "GOLDEN BONUS ×3" : `BONUS WORLD ×${BONUS_MULT}`;
   g.calloutLife = 1.6;
-  g.announce(`Through the door. Bonus world: every hit scores times ${BONUS_MULT}.`);
+  g.announce(`Through the door. ${multiplier === GOLDEN_MULT ? "Golden " : ""}Bonus world: every hit scores times ${multiplier}.`);
   g.groove.combo();
   g.flash = Math.max(g.flash, 0.6);
 }
@@ -135,6 +145,7 @@ export function exitBonus(g: Arcade) {
   if (!run) return;
   g.bonus = null;
   g.bonusCleared += 1;
+  if (run.multiplier === GOLDEN_MULT) g.goldenCleared += 1;
   g.scroll = run.returnScroll;
   g.callout = "BACK ON THE PIER";
   g.calloutLife = 1.3;
