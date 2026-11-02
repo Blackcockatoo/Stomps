@@ -132,7 +132,9 @@ function scanOne(g: Arcade, key: string, dist: number, win: View["win"]) {
     g.streetCued.add(key);
     g.groove.cue();
   }
-  if (dist < -win.good && dist > -480) {
+  // Only an encounter that was actually telegraphed can be missed. This
+  // prevents phantom penalties after a seek, a saved jump or a skipped zone.
+  if (dist < -win.good && dist > -480 && g.streetCued.has(key)) {
     g.streetMarks.set(key, { kind: "miss", at: g.now });
     g.streetMiss += 1;
     g.flowState = flowMiss(g.flowState, g.now);

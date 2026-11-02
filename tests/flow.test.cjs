@@ -44,6 +44,8 @@ test('misses affect charge, cause stumble and allow recovery', () => {
   a.flowState=state;
   a.meter=0.8;
   const spec=game.route.STREETS[0];
+  a.scroll=game.route.streetX(spec)-40-132;
+  a.scanStreets(); // first warn the player; this is an actionable challenge
   a.scroll=game.route.streetX(spec)+70-132;
   a.scanStreets();
   assert.ok(a.streetMiss>=1);
@@ -60,4 +62,13 @@ test('button tapping without a street hit does not earn FLOW', () => {
   for(let i=0;i<8;i++){a.now+=0.9;a.commitSingle('B');}
   assert.equal(a.flowState.chain,0);
   assert.equal(a.flowState.level,0);
+});
+
+test('jumping ahead of unannounced street events never penalises the player', () => {
+  const a=make();
+  const spec=game.route.STREETS[0];
+  a.scroll=game.route.streetX(spec)+70-132;
+  a.scanStreets();
+  assert.equal(a.streetMiss,0);
+  assert.equal(a.flowState.chain,0);
 });
