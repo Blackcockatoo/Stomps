@@ -79,8 +79,11 @@ const RAW: Omit<StreetSpec, "uid">[] = [
   { id: "skateboard", zone: "shops", at: 0.48, trigger: ["A", "C"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 350, scoreGood: 192, feedback: "SIDEWINDER", body: false },
   { id: "bin", zone: "shops", at: 0.66, trigger: ["C"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 160, scoreGood: 88, feedback: "TIDY FOOTWORK", body: false },
   { id: "trolley", zone: "shops", at: 0.84, trigger: ["A", "B"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 400, scoreGood: 220, feedback: "TROLLEY DODGE", body: false },
+  { id: "puddle", zone: "pier", at: 0.12, trigger: ["A"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 250, scoreGood: 135, feedback: "PIER APPROACH", body: false },
   { id: "seagull", zone: "pier", at: 0.26, trigger: ["B"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 300, scoreGood: 165, feedback: "FLOCK FLIGHT", body: false },
+  { id: "skateboard", zone: "pier", at: 0.39, trigger: ["A", "C"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 390, scoreGood: 210, feedback: "PIER SHUFFLE", body: false },
   { id: "streetlight", zone: "pier", at: 0.52, trigger: ["C"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 250, scoreGood: 137, feedback: "SPOTLIGHT", body: false },
+  { id: "newspaper", zone: "pier", at: 0.65, trigger: ["C"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 220, scoreGood: 115, feedback: "WINDY DECK", body: false },
   { id: "seagull", zone: "pier", at: 0.78, trigger: ["B"], telegraphMs: 850, perfectMs: 135, goodMs: 250, scorePerfect: 300, scoreGood: 165, feedback: "FLOCK FLIGHT", body: false },
 ];
 

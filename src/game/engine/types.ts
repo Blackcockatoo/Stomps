@@ -22,6 +22,7 @@ export type ResultStats = {
   stumble: number;
   maxCombo: number;
   flowPeak?: number;
+  goldenBonus?: number;
 };
 
 export type Step = {
@@ -44,7 +45,7 @@ export type Trail = { img: HTMLImageElement | HTMLCanvasElement; x: number; y: n
 export type Mote = { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean };
 
 export type LiveHud = { score: number; meter: number; streak: number; gain: number; serial: number; label: string; bonus?: boolean;
-  flowLevel?: number; flowChain?: number; recovering?: boolean };
+  flowLevel?: number; flowChain?: number; recovering?: boolean; bonusMultiplier?: number };
 export type Best = { strut: number; rhythm: number };
 
 export type Hooks = {

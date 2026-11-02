@@ -157,6 +157,10 @@ export class Arcade {
   lap = 0;
   /** Street hits landed this lap (opens the bonus door at DOOR_HITS). */
   lapHits = 0;
+  /** Pier gauntlet: six precision opportunities before the bonus door. */
+  pierPerfect = 0;
+  pierMiss = 0;
+  goldenCleared = 0;
   /** On-screen slice of the playfield (portrait phones crop the sides). */
   view: ViewSpan = FULL_VIEW;
   /** Active bonus-world segment, if Moss went through the door. */
@@ -345,6 +349,9 @@ export class Arcade {
     this.scroll = 0;
     this.lap = 0;
     this.lapHits = 0;
+    this.pierPerfect = 0;
+    this.pierMiss = 0;
+    this.goldenCleared = 0;
     this.bonus = null;
     this.bonusCleared = 0;
     this.doorDone.clear();
