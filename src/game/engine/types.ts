@@ -39,7 +39,7 @@ export type Wave = { x: number; r: number; life: number };
 export type Bird = { x: number; y: number; t: number; vy: number; scare: number };
 export type Grant = { points: number; meter: number; at: number };
 export type StreetMark = { kind: "perfect" | "good" | "miss"; at: number };
-export type Trail = { img: HTMLImageElement; x: number; y: number; flip: boolean; life: number };
+export type Trail = { img: HTMLImageElement | HTMLCanvasElement; x: number; y: number; flip: boolean; life: number };
 export type Mote = { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean };
 
 export type LiveHud = { score: number; meter: number; streak: number; gain: number; serial: number; label: string };

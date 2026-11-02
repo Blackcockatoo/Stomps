@@ -466,3 +466,4 @@ body > div { height: 100%; }
 .cab-btn small { display: block; margin-top: 6px; font-size: 8px; letter-spacing: .08em; opacity: .8; font-family: var(--font-body, inherit); text-transform: none; }
 .chooser .menu-actions { grid-template-columns: 1fr; }
 .chooser .cab-btn { min-height: 56px; text-align: left; }
+.cab-btn[aria-pressed="true"] { border-color: var(--color-stride); color: var(--color-stride); }

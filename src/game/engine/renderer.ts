@@ -201,7 +201,7 @@ export function drawMomentum(g: Arcade) {
 export function drawMoss(g: Arcade) {
   const step = g.queue[g.stepIndex];
   if (!step) return;
-  const frames = g.clips.get(step.clip);
+  const frames = g.mossFrames(step.clip);
   const img = frames?.[Math.min(g.frame, (frames?.length ?? 1) - 1)];
   if (!img) return;
   const ctx = g.ctx2d;

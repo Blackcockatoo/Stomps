@@ -5,7 +5,7 @@ import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, t
 import { ROUTE_CARDS } from "@/game/route";
 import { REPORT } from "@/game/report";
 import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
-import { DEFAULT_KEYS, type KeyMap } from "@/game/storage";
+import { DEFAULT_KEYS, type KeyMap, type Skin } from "@/game/storage";
 import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from "@/game/chart";
 
 type Panel = "none" | "lab" | "notes" | "hints" | "stages" | "settings" | "rhythm";
@@ -43,6 +43,7 @@ export function MossApp() {
   const [keymap, setKeymap] = useState<KeyMap>({ ...DEFAULT_KEYS });
   const [offset, setOffset] = useState(0);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [skin, setSkin] = useState<Skin>("classic");
   /** Which action is waiting for a new key (key remap), if any. */
   const [capture, setCapture] = useState<Btn | null>(null);
   const captureRef = useRef<Btn | null>(null);
@@ -88,6 +89,7 @@ export function MossApp() {
     setKeymap({ ...arcade.save.keys });
     setOffset(arcade.audioOffset);
     setDifficulty(arcade.difficulty);
+    setSkin(arcade.skin);
     arcade.start();
     const onKey = (event: KeyboardEvent) => {
       const waiting = captureRef.current;
@@ -396,6 +398,12 @@ export function MossApp() {
                   arcadeRef.current?.resetBests();
                   announce("Best scores reset");
                 }}
+                skin={skin}
+                onSkin={(next) => {
+                  arcadeRef.current?.setSkin(next);
+                  setSkin(next);
+                  announce(next === "cream" ? "Cream hoodie on" : "Red hoodie on");
+                }}
               />
             ) : null}
           </div>
@@ -553,6 +561,8 @@ function Settings(props: {
   onCalCancel: () => void;
   onCalApply: (seconds: number) => void;
   onResetBests: () => void;
+  skin: Skin;
+  onSkin: (skin: Skin) => void;
 }) {
   const { audio, keymap, capture, calTaps, calResult } = props;
   const [confirmReset, setConfirmReset] = useState(false);
@@ -575,6 +585,16 @@ function Settings(props: {
         <button type="button" className="cab-btn" aria-pressed={audio.muted} onClick={() => props.onAudio({ ...audio, muted: !audio.muted })}>
           {audio.muted ? "UNMUTE" : "MUTE"}
         </button>
+      </div>
+
+      <h3>LOOK</h3>
+      <p>Moss&apos;s hoodie. Cream is recoloured live from the original red frames.</p>
+      <div className="setting-row" role="group" aria-label="Hoodie">
+        {(["classic", "cream"] as const).map((option) => (
+          <button key={option} type="button" className="cab-btn" aria-pressed={props.skin === option} onClick={() => props.onSkin(option)}>
+            {option === "classic" ? "RED HOODIE" : "CREAM HOODIE"}
+          </button>
+        ))}
       </div>
 
       <h3>RHYTHM SYNC</h3>
