@@ -250,11 +250,23 @@ export function zoneSample(worldX: number): ZoneSample {
   return { zone, index: 0, local: 0, startFade: 1, endFade: 0, next: ZONES[1]!, prev: ZONES[ZONES.length - 1]! };
 }
 
+/** Share of the pier that is foreshore promenade before the boards start over the water. */
+export const PIER_DECK = 0.3;
+/** Share of the pier over which the foreshore plates fade out once the deck begins. */
+export const PIER_DECK_FADE = 0.06;
+
+/**
+ * Opacity of the supplied foreshore plates. They frame the approach to the
+ * pier (fading in at the end of the strip) and fade out once the engine-drawn
+ * deck takes over, so the pier no longer borrows the foreshore for its length.
+ */
 export function plateWeight(worldX: number) {
   const sample = zoneSample(worldX);
-  if (sample.zone.id === "pier") return 1;
+  if (sample.zone.id === "pier") {
+    const at = sample.local / sample.zone.px;
+    return clamp(1 - (at - PIER_DECK) / PIER_DECK_FADE, 0, 1);
+  }
   if (sample.next.id === "pier") return sample.endFade;
-  if (sample.prev.id === "pier") return 1 - sample.startFade;
   return 0;
 }
 
@@ -333,17 +345,20 @@ export const ROUTE_CARDS: RouteCard[] = [
   {
     id: "hud-station",
     name: "Layout · station",
-    note: "Reference only. Station events are give-way, never collisions.",
+    src: "/moss/source/04_STREET_BACKGROUNDS/stage_03_station_concept.png",
+    note: "World-pack station still. In play the station is engine-drawn pixel scenery; its events are give-way, never collisions.",
   },
   {
     id: "hud-shops",
     name: "Layout · the strip",
-    note: "Reference only. Shop props are timed footwork.",
+    src: "/moss/source/04_STREET_BACKGROUNDS/stage_02_strip_concept.png",
+    note: "World-pack strip still. In play the shopfronts are engine-drawn; shop props are timed footwork.",
   },
   {
     id: "hud-pier",
     name: "Layout · the pier",
-    note: "Reference only. The pier still uses the foreshore plates behind the lamps.",
+    src: "/moss/source/04_STREET_BACKGROUNDS/stage_01_foreshore_concept.png",
+    note: "World-pack foreshore still. The foreshore plates now only frame the pier approach; the pier itself is its own deck over the water, with pilings, rail and lamps.",
   },
   {
     id: "atlas",

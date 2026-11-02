@@ -34,6 +34,7 @@ buildSync({
       "export * as rhythm from './src/game/engine/rhythm';",
       "export * as loader from './src/game/engine/loader';",
       "export * as chart from './src/game/chart';",
+      "export * as route from './src/game/route';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',

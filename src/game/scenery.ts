@@ -2,6 +2,7 @@ import type { Btn } from "./arcade-types";
 import { keyLabel } from "./keys";
 import {
   CYCLE_SEC,
+  PIER_DECK,
   ROUTE_PX,
   ZONES,
   mod,
@@ -136,19 +137,76 @@ function paintShops(ctx: Ctx, glow: Ctx, marks: Ctx, width: number, base: number
     r(ctx, x + 10, base - 96, 30, 40, "#10141c");
     r(ctx, x + 48, base - 84, 24, 68, "#1a1418");
     r(glow, x + 14, base - 90, 22, 26, "#f0d090");
+    // Neon shop sign over every other awning.
+    if (i % 2 === 0) {
+      r(ctx, x + 18, base - 106, 48, 9, "#120e14");
+      r(glow, x + 20, base - 105, 44, 2, aw);
+      r(glow, x + 20, base - 100, 44, 2, aw);
+    }
     x += 108;
     i += 1;
   }
 }
 
 function paintPier(ctx: Ctx, glow: Ctx, marks: Ctx, width: number, base: number) {
-  for (let x = 0; x < width; x += 20) r(marks, x, 22, 14, 3, "rgba(60, 48, 36, 0.45)");
-  for (let x = 28; x < width; x += 64) {
+  const deck = Math.round(width * PIER_DECK);
+  // Promenade approach: the foreshore plates sit behind these lamps and benches.
+  for (let x = 0; x < deck; x += 20) r(marks, x, 22, 14, 3, "rgba(60, 48, 36, 0.45)");
+  for (let x = 28; x < deck - 16; x += 64) {
     r(ctx, x, base - 108, 4, 106, "#241c18");
     r(glow, x - 6, base - 116, 16, 10, "#f5c518");
     r(ctx, x - 18, base - 28, 40, 4, "#3a342c");
     r(ctx, x - 18, base - 18, 4, 16, "#3a342c");
     r(ctx, x + 18, base - 18, 4, 16, "#3a342c");
+  }
+  // The pier proper: open water behind and under the boards.
+  const span = width - deck;
+  r(ctx, deck, base - 66, span, 66, "#0d2738");
+  r(ctx, deck, base - 66, span, 3, "#2c5f78");
+  for (let i = 0; i < span / 9; i++) {
+    const x = deck + hash(i * 31 + 7) * span;
+    const y = base - 60 + hash(i * 77 + 3) * 50;
+    r(ctx, x, y, 6 + hash(i * 13 + 1) * 14, 1, i % 3 ? "#1f4a62" : "#4c86a0");
+  }
+  // Back rail and its posts, then the lamps along it.
+  r(ctx, deck, base - 34, span, 3, "#4a3828");
+  r(ctx, deck, base - 22, span, 2, "#3a2c20");
+  for (let x = deck; x < width; x += 22) r(ctx, x, base - 34, 3, 34, "#3a2c20");
+  for (let x = deck + 40; x < width - 8; x += 96) {
+    r(ctx, x, base - 104, 4, 104, "#1c1612");
+    r(ctx, x - 8, base - 108, 20, 5, "#1c1612");
+    r(glow, x - 10, base - 104, 24, 8, "#f5c518");
+    r(glow, x - 2, base - 66, 8, 40, "rgba(245, 197, 24, 0.35)");
+  }
+  r(ctx, deck, base - 8, span, 8, "#4a3626");
+
+  // Deck boards (marks layer is drawn over the pavement plate at screen y 196).
+  r(marks, deck - 6, 0, 6, 54, "#2a1e16");
+  r(marks, deck, 0, span, 52, "#5c4430");
+  r(marks, deck, 0, span, 3, "#7a5c40");
+  for (let x = deck; x < width; x += 11) {
+    r(marks, x, 0, 1, 52, "#2a1e16");
+    if (hash(x) > 0.6) r(marks, x + 3, 6 + hash(x * 13 + 5) * 36, 4, 1, "#6c5038");
+  }
+  r(marks, deck, 50, span, 6, "#2e2018");
+  r(marks, width - 5, 0, 5, 56, "#2a1e16");
+  r(ctx, width - 6, base - 40, 6, 40, "#2a1e16");
+  // Water under the deck with pilings and cross-bracing.
+  r(marks, deck, 56, span, 18, "#0b2233");
+  for (let i = 0; i < span / 14; i++) r(marks, deck + hash(i * 53 + 11) * span, 60 + hash(i * 29 + 2) * 12, 8, 1, "#2c5f78");
+  marks.strokeStyle = "#24180f";
+  marks.lineWidth = 2;
+  for (let x = deck + 12; x < width; x += 48) {
+    r(marks, x, 56, 6, 18, "#2a1e16");
+    r(marks, x, 70, 6, 2, "#4c86a0");
+    if (x + 48 < width) {
+      marks.beginPath();
+      marks.moveTo(x + 6, 57);
+      marks.lineTo(x + 48, 69);
+      marks.moveTo(x + 6, 69);
+      marks.lineTo(x + 48, 57);
+      marks.stroke();
+    }
   }
 }
 

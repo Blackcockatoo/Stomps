@@ -19,7 +19,7 @@ export const REPORT = {
   ],
   limits: [
     "Zone buildings are engine-drawn pixel scenery, not the unfinished V0.6 blockouts and not a hand-painted mile of Frankston.",
-    "The pier still borrows the foreshore plates. The other zones do not have their own painted bay.",
+    "The foreshore plates now only frame the pier approach. The pier itself is engine-drawn: deck boards over open water, pilings, a back rail and lamps. No zone has a hand-painted bay of its own yet.",
     "There is still no cream-hoodie skin, no recorded soundtrack, and no bonus-world door. This pass was not tapped on a physical phone.",
   ],
   tests: [

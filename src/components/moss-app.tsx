@@ -682,7 +682,7 @@ function Stages() {
       <h2>STAGE CARDS</h2>
       <p>
         The route is one continuous pavement: van, crossing, station, strip, pier, home. Time of day is a separate
-        grade. These stills are layout references from the world pack, not the playfield.
+        grade. The stills below come from the world pack; the playfield is drawn by the engine from the same layout.
       </p>
       {ROUTE_CARDS.map((stage) => (
         <div key={stage.id}>
@@ -691,7 +691,7 @@ function Stages() {
           <p>{stage.note}</p>
         </div>
       ))}
-      {STAGE_CONCEPTS.map((stage) => (
+      {STAGE_CONCEPTS.filter((stage) => !ROUTE_CARDS.some((card) => card.src === stage.src)).map((stage) => (
         <div key={stage.id}>
           <h3>{stage.name}</h3>
           <img className="stage-card" src={stage.src} alt={`${stage.name}: world pack concept still`} />
