@@ -170,6 +170,10 @@ export function flushStreet(g: Arcade) {
     .map((view) => ({ ...view, solution: streetSolution(view.spec, btns) }))
     .filter((view) => view.solution && Math.abs(view.dist) <= view.win.good)
     .sort((a, b) => Math.abs(a.dist) - Math.abs(b.dist))[0];
+  // A single-button fallback must not steal a valid two-button primary move.
+  // Give a potential chord 90ms to complete, regardless of button order.
+  const chordPending = open.some((view) => streetPrefix(view.spec, btns) && Math.abs(view.dist) <= view.win.good);
+  if (exact && chordPending && age < 0.09) return;
   if (exact) {
     g.settleStreet(exact.spec, exact.key, exact.dist, exact.win.perfect, exact.solution!, exact.win.good);
     g.streetPending.clear();

@@ -69,3 +69,18 @@ test('second run varies authored objects while preserving positions and human en
   a.playStrut('route');assert.equal(a.runSeed,1);
   a.playStrut('route');assert.equal(a.runSeed,0);
 });
+
+test('an alternate single press waits briefly for a primary two-button chord',()=>{
+  const s=item('trolley');
+  const a=make();a.playStrut('route');
+  a.scroll=route.streetX(s)-a.mossX();
+  a.now=1;
+  a.streetPending.set('A',1);
+  a.flushStreet();
+  assert.equal(a.streetPerfect,0, 'partial chord must wait');
+  a.now=1.04;
+  a.streetPending.set('B',1.04);
+  a.flushStreet();
+  assert.equal(a.streetPerfect,1, 'A+B lands the primary move');
+  assert.equal(a.flowState.chain,1);
+});
