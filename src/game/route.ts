@@ -317,35 +317,37 @@ export function auditRoute(): string[] {
   return problems;
 }
 
-export const ROUTE_CARDS = [
+export type RouteCard = { id: string; name: string; note: string; src?: string };
+
+/**
+ * Layout notes for the Stage Cards panel. The world-pack stills these described
+ * (/moss/world/ui/*.png) were never committed, so the cards are text-only until
+ * the art ships; add `src` back then (check-assets verifies any src exists).
+ */
+export const ROUTE_CARDS: RouteCard[] = [
   {
     id: "hud-caravan",
     name: "Layout · the van",
-    src: "/moss/world/ui/street_strut_caravan.png",
     note: "V0.6 composition reference. The playable van is drawn on the shared pavement.",
   },
   {
     id: "hud-station",
     name: "Layout · station",
-    src: "/moss/world/ui/street_strut_station.png",
     note: "Reference only. Station events are give-way, never collisions.",
   },
   {
     id: "hud-shops",
     name: "Layout · the strip",
-    src: "/moss/world/ui/street_strut_shops.png",
     note: "Reference only. Shop props are timed footwork.",
   },
   {
     id: "hud-pier",
     name: "Layout · the pier",
-    src: "/moss/world/ui/street_strut_pier.png",
     note: "Reference only. The pier still uses the foreshore plates behind the lamps.",
   },
   {
     id: "atlas",
     name: "Lighting atlas",
-    src: "/moss/world/ui/world_lighting_atlas.png",
     note: "Dawn, day, sunset, night. This build cycles them in three minutes so the grade is visible. The schema's fourteen minutes is the long setting.",
   },
 ];
