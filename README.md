@@ -18,6 +18,10 @@ Hold **A** to stride, tap **S** to stomp, use **D** for style. On phones, use th
 
 **Sound, sync & keys** (menu): volume and mute (also the SOUND toggle in the top bar), a tap-along that measures your audio/visual delay and offers a rhythm offset (SYNC −/+ still fine-tune it), and remappable keys. A **gamepad** (standard mapping) also works: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses. Screen readers get short announcements for judgements, combos and milestones through a polite live region.
 
+## P3.3 — Pier Gauntlet
+
+Six authored challenges now span the pier approach and deck. A flawless six-PERFECT sequence, with no misses, unlocks the Golden Bonus Door even without full Quake Drive; Golden Bonus events score triple rather than the standard double. The game displays the multiplier on the door, during the bonus and on the result screen. Pier mastery resets per lap, and all extra objects reuse existing assets. Tests cover threshold logic and scoring parity.
+
 ## P3.2 — Street Skills
 
 Street interactions now support a signposted move and learned alternatives. Matching named combos at an encounter earn a signature technique reward. Precisely delayed actions can earn a close-call reward on non-person objects. Repeated journeys vary some existing shop and pier interactions deterministically without changing their positions or cue windows, so all challenges remain learnable. No new art or controls.

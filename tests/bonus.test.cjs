@@ -102,3 +102,34 @@ test('a new strut clears bonus state', () => {
   assert.equal(a.bonusCleared, 0);
   assert.equal(a.doorDone.size, 0);
 });
+
+test('six perfect pier encounters unlock a golden gate without existing charge',()=>{
+  const {a}=nearDoor();
+  const pier=route.STREETS.filter((s)=>s.zone==='pier');
+  assert.equal(pier.length,6);
+  assert.equal(bonus.pierCrown(5,0),false);
+  assert.equal(bonus.pierCrown(6,1),false);
+  for(let i=0;i<pier.length;i++)a.settleStreet(pier[i],'pier-perfect-'+i,0,99);
+  assert.equal(a.pierPerfect,6);
+  assert.equal(a.pierMiss,0);
+  assert.equal(bonus.pierCrown(a.pierPerfect,a.pierMiss),true);
+  a.meter=0;
+  assert.ok(a.lapHits<bonus.DOOR_HITS);
+  a.scroll=bonus.doorWorld(0)-a.mossX()+1;
+  bonus.tickDoor(a);
+  assert.ok(a.bonus,'perfect pier run opens door');
+  assert.equal(a.bonus.multiplier,bonus.GOLDEN_MULT);
+  bonus.exitBonus(a);
+  assert.equal(a.goldenCleared,1);
+});
+
+test('golden pier world pays triple while regular bonus pays double',()=>{
+  const s=route.STREETS.find((x)=>x.id==='puddle');
+  function run(multiplier){
+    const a=make();a.playStrut('route');
+    a.bonus={serial:1,returnScroll:0,start:50000,specs:bonus.bonusSpecs(),multiplier};
+    a.settleStreet(s,'x',0,99);
+    return a.score;
+  }
+  assert.equal(run(2)*3,run(3)*2);
+});
