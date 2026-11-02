@@ -15,13 +15,16 @@
  * Fields are public for those modules and the unit tests; they are not an API.
  */
 import { BodySpring } from "./feel";
-import { Groove } from "./audio";
+import { Groove, pickTrack, soundtrackUrls } from "./audio";
 import type { Btn } from "./arcade-types";
-import { CHART_END_BEAT, buildChart } from "./chart";
+import { CHART_END_BEAT, buildChart, isDifficulty, type Difficulty } from "./chart";
 import type { ClipId, FX } from "./clips";
+import { SkinCache, type Frame } from "./skin";
+import type { BonusRun } from "./bonus";
+import { FULL_VIEW, type ViewSpan } from "./view";
 import { CRUISE_PX, auditRoute, type StreetSpec } from "./route";
 import { bakeWorld, type WorldArt } from "./scenery";
-import { loadSave, resetBests as clearBests, updateSave, clampOffset, type SaveData } from "./storage";
+import { loadSave, resetBests as clearBests, updateSave, clampOffset, type SaveData, type Skin } from "./storage";
 import { setKeyMap } from "./keys";
 import * as input from "./engine/input";
 import * as scoring from "./engine/scoring";
@@ -90,6 +93,8 @@ export class Arcade {
   save: SaveData;
 
   clips = new Map<ClipId, HTMLImageElement[]>();
+  skin: Skin = "classic";
+  readonly skinCache = new SkinCache();
   fx = new Map<keyof typeof FX, HTMLImageElement[]>();
   stage = new Map<string, HTMLImageElement>();
   birdsImg: HTMLImageElement[] = [];
@@ -145,6 +150,17 @@ export class Arcade {
   streetCued = new Set<string>();
   flow = CRUISE_PX;
   lap = 0;
+  /** Street hits landed this lap (opens the bonus door at DOOR_HITS). */
+  lapHits = 0;
+  /** On-screen slice of the playfield (portrait phones crop the sides). */
+  view: ViewSpan = FULL_VIEW;
+  /** Active bonus-world segment, if Moss went through the door. */
+  bonus: BonusRun | null = null;
+  bonusSerial = 0;
+  bonusCleared = 0;
+  /** Laps whose door has been passed (entered or shut) / announced. */
+  doorDone = new Set<number>();
+  doorHinted = new Set<number>();
   streetPerfect = 0;
   streetGood = 0;
   streetMiss = 0;
@@ -161,6 +177,7 @@ export class Arcade {
   judgeText = "";
   judgeLife = 0;
   songDur = 0;
+  difficulty: Difficulty = "normal";
   /** Tap-along calibration taps (groove seconds); null when not calibrating. */
   calTaps: number[] | null = null;
 
@@ -176,6 +193,8 @@ export class Arcade {
     this.bestStrut = this.save.best.strut;
     this.bestRhythm = this.save.best.rhythm;
     this.audioOffset = this.save.audioOffset;
+    this.difficulty = this.save.difficulty;
+    this.skin = this.save.skin;
     this.groove.setLevel(this.save.audio.volume, this.save.audio.muted);
     setKeyMap(this.save.keys);
     this.hooks.onRouteBest?.(this.bestRoute);
@@ -209,6 +228,9 @@ export class Arcade {
   }
 
   async boot() {
+    if (typeof document !== "undefined") {
+      this.groove.trackUrl = pickTrack(soundtrackUrls(), (mime) => document.createElement("audio").canPlayType(mime));
+    }
     try {
       const art = emptyArt();
       this.clips = art.clips;
@@ -221,6 +243,7 @@ export class Arcade {
         this.loadTotal = total;
         this.hooks.onProgress?.(done, total);
       });
+      this.warmSkin();
       const problems = auditRoute();
       if (problems.length) {
         this.loadError = problems[0] ?? "Route audit failed";
@@ -315,6 +338,11 @@ export class Arcade {
     this.resetRound();
     this.scroll = 0;
     this.lap = 0;
+    this.lapHits = 0;
+    this.bonus = null;
+    this.bonusCleared = 0;
+    this.doorDone.clear();
+    this.doorHinted.clear();
     this.flow = CRUISE_PX;
     this.streetMarks.clear();
     this.streetCued.clear();
@@ -330,7 +358,46 @@ export class Arcade {
     this.calloutLife = 1.3;
   }
 
-  playRhythm() {
+  /** Moss's frames for a clip in the chosen skin (cream frames are baked on first use). */
+  mossFrames(clip: ClipId): Frame[] | undefined {
+    const source = this.clips.get(clip);
+    return this.skin === "cream" ? this.skinCache.frames(clip, source) : source;
+  }
+
+  /** Switches the hoodie skin and remembers it in the save. */
+  setSkin(skin: Skin) {
+    if (skin !== "classic" && skin !== "cream") return;
+    this.skin = skin;
+    this.save = updateSave((save) => {
+      save.skin = skin;
+    });
+    this.warmSkin();
+  }
+
+  /** Bakes cream frames one clip per task so the first quake or spin never hitches. */
+  warmSkin() {
+    if (this.skin !== "cream" || typeof document === "undefined") return;
+    const ids = [...this.clips.keys()];
+    const next = () => {
+      const id = ids.shift();
+      if (id === undefined || this.dead || this.skin !== "cream") return;
+      this.mossFrames(id);
+      setTimeout(next, 0);
+    };
+    next();
+  }
+
+  /** Remembers the Rhythm Royalty difficulty in the save. */
+  setDifficulty(difficulty: Difficulty) {
+    if (!isDifficulty(difficulty)) return;
+    this.difficulty = difficulty;
+    this.save = updateSave((save) => {
+      save.difficulty = difficulty;
+    });
+  }
+
+  playRhythm(difficulty: Difficulty = this.difficulty) {
+    if (difficulty !== this.difficulty) this.setDifficulty(difficulty);
     this.calTaps = null;
     this.resetRound();
     this.mode = "rhythm";
@@ -339,7 +406,7 @@ export class Arcade {
     this.maxCombo = 0;
     this.groove.start();
     this.songDur = CHART_END_BEAT * this.groove.beatDur;
-    this.chart = buildChart(this.groove.beatDur).map((note) => ({
+    this.chart = buildChart(this.groove.beatDur, this.difficulty).map((note) => ({
       ...note,
       hit: false,
       missed: false,
@@ -512,6 +579,15 @@ export class Arcade {
 
   mossWorld() {
     return street.mossWorld(this);
+  }
+
+  setView(view: ViewSpan) {
+    this.view = view;
+  }
+
+  /** Scroll on the route itself: frozen at the door while in the bonus world. */
+  routeScroll() {
+    return this.bonus ? this.bonus.returnScroll : this.scroll;
   }
 
   streetViews() {

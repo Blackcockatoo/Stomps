@@ -8,21 +8,10 @@
 //    external sourcemaps, and are the files dist/index.html actually references.
 // 3. The CSS still loads the self-hosted fonts, and index.html keeps its meta.
 import assert from 'node:assert/strict';
-import { buildSync } from 'esbuild';
+import { gameUrls } from './game-urls.mjs';
 import { existsSync, readFileSync } from 'node:fs';
-import vm from 'node:vm';
 
-const code = buildSync({ stdin: { contents: "export * from './src/game/clips'; export { ROUTE_CARDS } from './src/game/route';", resolveDir: '.', loader: 'ts' }, bundle: true, platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
-const sandbox = { module: { exports: {} } };
-vm.runInNewContext(code, sandbox);
-const { LAB_CLIPS, FX, STAGE, STAGE_CONCEPTS, UI, birdSrc, ROUTE_CARDS } = sandbox.module.exports;
-
-const urls = new Set();
-for (const c of LAB_CLIPS) for (let i = 0; i < c.frames; i++) urls.add(c.src(i));
-for (const fx of Object.values(FX)) for (let i = 0; i < 8; i++) urls.add(fx(i));
-for (const s of [...STAGE, ...STAGE_CONCEPTS, ...ROUTE_CARDS]) if (s.src) urls.add(s.src);
-for (const url of Object.values(UI)) urls.add(url);
-for (let i = 0; i < 4; i++) urls.add(birdSrc(i));
+const urls = gameUrls();
 for (const url of urls) {
   assert.ok(existsSync('public' + url), 'Missing public asset: ' + url);
   assert.ok(existsSync('dist' + url), 'Missing built asset: ' + url);
@@ -54,4 +43,27 @@ const cacheFor = (source) => vercel.headers.find((h) => h.source === source)?.he
 assert.match(cacheFor('/assets/(.*)'), /immutable/, 'hashed assets must be served immutable');
 assert.match(cacheFor('/index.html'), /max-age=0/, 'index.html must revalidate');
 
-console.log(`PASS: ${urls.size} game/lab/stage assets byte-identical in dist; hashed bundles ${manifest['arcade.js']} + ${manifest['arcade.css']} with sourcemaps.`);
+
+// 4. The soundtrack meta matches what is actually in public/audio.
+for (const ext of ['ogg', 'mp3']) {
+  const url = `/audio/neon-strut.${ext}`;
+  if (existsSync('public' + url)) {
+    assert.ok(html.includes(url), 'index.html does not advertise ' + url);
+    assert.deepEqual(readFileSync('public' + url), readFileSync('dist' + url), 'Soundtrack changed during build: ' + url);
+  } else assert.ok(!html.includes(url), 'index.html advertises missing ' + url);
+}
+// 5. PWA: manifest + generated service worker whose precache list is all in dist/.
+const webmanifest = JSON.parse(readFileSync('dist/manifest.webmanifest', 'utf8'));
+assert.equal(webmanifest.start_url, '/');
+for (const icon of webmanifest.icons) assert.ok(existsSync('dist' + icon.src), 'Missing manifest icon: ' + icon.src);
+assert.ok(html.includes('rel="manifest" href="/manifest.webmanifest"'), 'index.html does not link the manifest');
+assert.ok(html.includes('viewport-fit=cover'), 'viewport must allow safe-area insets');
+const sw = readFileSync('dist/sw.js', 'utf8');
+assert.ok(!sw.includes('__PRECACHE__') && !sw.includes('__VERSION__'), 'sw.js placeholders not filled');
+const precache = JSON.parse(sw.match(/const PRECACHE = (\[[\s\S]*?\]);/)[1]);
+for (const url of [manifest['arcade.js'], manifest['arcade.css'], '/', ...urls]) assert.ok(precache.includes(url), 'sw.js does not precache ' + url);
+for (const url of precache) if (url !== '/') assert.ok(existsSync('dist' + url), 'sw.js precaches missing ' + url);
+assert.match(cacheFor('/sw.js'), /max-age=0/, 'sw.js must revalidate');
+const csp = vercel.headers.find((h) => h.source === '/(.*)').headers.find((h) => h.key === 'Content-Security-Policy').value;
+for (const directive of ["worker-src 'self'", "manifest-src 'self'", "script-src 'self'"]) assert.ok(csp.includes(directive), 'CSP missing ' + directive);
+console.log(`PASS: ${urls.size} game/lab/stage assets byte-identical in dist; hashed bundles ${manifest['arcade.js']} + ${manifest['arcade.css']} with sourcemaps; sw.js precaches ${precache.length} URLs.`);

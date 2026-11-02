@@ -5,7 +5,11 @@
 //   dist/assets/arcade-<hash>.css    (+ .css.map)  immutable, 1 year
 //   dist/assets/manifest.json        (logical name → hashed path, used by check-assets)
 //   dist/<everything in public/>     (copied byte-for-byte; sprites keep their own paths)
+//   dist/sw.js                       (service worker; precache list + version injected here)
 import { build } from 'esbuild';
+import { createHash } from 'node:crypto';
+import { gameUrls } from './game-urls.mjs';
+import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -59,7 +63,36 @@ for (const [name, url] of Object.entries(manifest)) {
   if (!html.includes(ref)) throw new Error(`arcade.html does not reference ${ref}`);
   html = html.replace(ref, `"${url}"`);
 }
+// Optional recorded soundtrack (see src/game/audio.ts). Advertised with a meta tag
+// so the game never probes for a file that is not there.
+const tracks = ['ogg', 'mp3'].map((ext) => `/audio/neon-strut.${ext}`).filter((url) => existsSync('public' + url));
+if (tracks.length) html = html.replace('</head>', `<meta name="moss-soundtrack" content="${tracks.join(',')}">\n</head>`);
 await writeFile(`${OUT}/index.html`, html);
+
+// Service worker: app shell + hashed bundles + fonts + icons + every game sprite.
+// The soundtrack (if any) is cached on first play rather than up front.
+const precache = [
+  '/',
+  manifest['arcade.js'],
+  manifest['arcade.css'],
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/apple-touch-icon.png',
+  '/fonts/press-start-2p-latin-400.woff2',
+  '/fonts/silkscreen-latin-400.woff2',
+  ...[...gameUrls()].sort(),
+];
+for (const url of precache) if (url !== '/' && !existsSync(OUT + url)) throw new Error(`precache entry missing from dist: ${url}`);
+const hash = createHash('sha256');
+hash.update(html);
+for (const url of precache) if (url !== '/') hash.update(url + '\0').update(await readFile(OUT + url));
+const version = hash.digest('hex').slice(0, 12);
+const sw = (await readFile('scripts/sw-template.js', 'utf8'))
+  .replace('__VERSION__', JSON.stringify(version))
+  .replace('__PRECACHE__', JSON.stringify(precache, null, 2));
+await writeFile(`${OUT}/sw.js`, sw);
 
 const kb = (file) => (Object.values(file.metafile.outputs).find((o) => o.entryPoint)?.bytes ?? 0) / 1024;
 console.log(`Arcade built: ${manifest['arcade.js']} (${kb(js).toFixed(1)} kB), ${manifest['arcade.css']} (${kb(css).toFixed(1)} kB).`);
+console.log(`Service worker: sw.js v${version}, ${precache.length} precached URLs.`);
+console.log(tracks.length ? `Soundtrack: ${tracks.join(', ')}` : 'Soundtrack: none (synth groove)');

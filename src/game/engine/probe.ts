@@ -24,6 +24,10 @@ export function installProbe(g: Arcade) {
     get held() { return [...self.keys]; },
     get downAt() { return Object.fromEntries([...self.downAt].map(([key, time]) => [key, Number(time.toFixed(3))])); },
     get now() { return Number(self.now.toFixed(3)); },
+    /** "recorded" while the soundtrack file is playing, "loading" before it decodes, else "synth". */
+    get soundtrack() { return self.groove.recorded ? "recorded" : self.groove.trackUrl && !self.groove.track ? "loading" : "synth"; },
+    /** Visible slice of the 480-wide playfield; narrower than full on portrait phones (canvas cropped). */
+    get view() { return { ...self.view }; },
     press: (btn: Btn) => {
       g.down(btn);
       window.setTimeout(() => g.up(btn), 90);

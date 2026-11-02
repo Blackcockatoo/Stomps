@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { hooks, make } = require('./helpers.cjs');
+const { game, hooks, make } = require('./helpers.cjs');
 
 test('route completion freezes and reports', () => {
   let result, mode;
@@ -35,4 +35,18 @@ test('practice is isolated from bests and recognises combos', () => {
   practice.now += 0.25;
   practice.commitSingle('B');
   assert.equal(move, 'HEEL-TOE HAMMER');
+});
+
+test('foreshore plates only frame the pier approach; the deck is its own scenery', () => {
+  const { plateWeight, ZONES, PIER_DECK, ROUTE_CARDS } = game.route;
+  const at = (id, f) => { const z = ZONES.find((x) => x.id === id); return z.start + z.px * f; };
+  assert.equal(plateWeight(at('shops', 0.2)), 0);
+  assert.ok(plateWeight(at('shops', 0.999)) > 0.9, 'fades in at the end of the strip');
+  assert.equal(plateWeight(at('pier', 0.1)), 1);
+  assert.equal(plateWeight(at('pier', PIER_DECK - 0.01)), 1);
+  assert.equal(plateWeight(at('pier', 0.6)), 0, 'out over the water the plates are gone');
+  assert.equal(plateWeight(at('caravan_return', 0.01)), 0);
+  const withArt = ROUTE_CARDS.filter((c) => c.src);
+  assert.ok(withArt.length >= 3);
+  assert.ok(withArt.every((c) => c.src.startsWith('/moss/source/04_STREET_BACKGROUNDS/')));
 });

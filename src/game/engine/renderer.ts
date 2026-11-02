@@ -2,7 +2,8 @@
 import type { Arcade } from "../arcade";
 import { CELL, PLAY_CLIPS, STAGE } from "../clips";
 import { gradeAt, plateWeight } from "../route";
-import { cycleOf, paintBackdrop, paintGlow, paintMarks, paintPips, paintProp, paintStreet } from "../scenery";
+import { cycleOf, paintBackdrop, paintBonusWorld, paintDoor, paintGlow, paintMarks, paintPips, paintProp, paintStreet } from "../scenery";
+import { DOOR_HINT_PX, doorOpen, doorWorld } from "../bonus";
 import { GROUND, H, W } from "./types";
 
 export function draw(g: Arcade) {
@@ -79,6 +80,16 @@ export function drawWorld(g: Arcade, front: boolean) {
     }
     return;
   }
+  if (g.bonus) {
+    if (!front) {
+      paintBonusWorld(ctx, g.scroll, g.now);
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(g.mossX(), GROUND + 3, 28, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
   if (front) {
     const weight = plateWeight(g.scroll + W / 2);
     const fore = g.stage.get("fore");
@@ -124,6 +135,7 @@ export function drawWorld(g: Arcade, front: boolean) {
 
 export function drawStreets(g: Arcade) {
   const ctx = g.ctx2d;
+  drawDoor(g);
   for (const view of g.streetViews()) {
     const mark = g.streetMarks.get(view.key);
     const screen = view.world - g.scroll;
@@ -137,6 +149,24 @@ export function drawStreets(g: Arcade) {
     paintProp(ctx, view.spec.id, screen, GROUND, age, kind, g.now);
     if (!mark && view.dist < view.win.telegraph && view.dist > -view.win.good) {
       paintPips(ctx, view.spec.trigger, screen, GROUND - 112, Math.abs(view.dist) <= view.win.good);
+    }
+  }
+}
+
+function drawDoor(g: Arcade) {
+  if (g.bonus || g.mode === "menu" || g.runKind === "practice") return;
+  for (const lapK of [g.lap - 1, g.lap, g.lap + 1]) {
+    if (lapK < 0) continue;
+    const screen = doorWorld(lapK) - g.scroll;
+    if (screen < -60 || screen > W + 60) continue;
+    const open = !g.doorDone.has(lapK) && doorOpen(g.meter, g.lapHits);
+    paintDoor(g.ctx2d, screen, GROUND, open, g.now);
+    if (open && screen - g.mossX() < DOOR_HINT_PX && screen > g.mossX()) {
+      g.ctx2d.fillStyle = "#f5c518";
+      g.ctx2d.font = "bold 8px monospace";
+      g.ctx2d.textAlign = "center";
+      g.ctx2d.fillText("STRUT IN", screen, GROUND - 112);
+      g.ctx2d.textAlign = "left";
     }
   }
 }
@@ -201,7 +231,7 @@ export function drawMomentum(g: Arcade) {
 export function drawMoss(g: Arcade) {
   const step = g.queue[g.stepIndex];
   if (!step) return;
-  const frames = g.clips.get(step.clip);
+  const frames = g.mossFrames(step.clip);
   const img = frames?.[Math.min(g.frame, (frames?.length ?? 1) - 1)];
   if (!img) return;
   const ctx = g.ctx2d;

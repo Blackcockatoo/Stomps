@@ -9,6 +9,9 @@ export type RunKind = "free" | "route" | "practice";
 
 export type ResultStats = {
   kind?: "rhythm" | "route";
+  difficulty?: "easy" | "normal" | "hard";
+  /** Bonus-door segments cleared during the run. */
+  bonus?: number;
   seconds?: number;
   personalBest?: number;
   newRecord?: boolean;
@@ -36,10 +39,10 @@ export type Wave = { x: number; r: number; life: number };
 export type Bird = { x: number; y: number; t: number; vy: number; scare: number };
 export type Grant = { points: number; meter: number; at: number };
 export type StreetMark = { kind: "perfect" | "good" | "miss"; at: number };
-export type Trail = { img: HTMLImageElement; x: number; y: number; flip: boolean; life: number };
+export type Trail = { img: HTMLImageElement | HTMLCanvasElement; x: number; y: number; flip: boolean; life: number };
 export type Mote = { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean };
 
-export type LiveHud = { score: number; meter: number; streak: number; gain: number; serial: number; label: string };
+export type LiveHud = { score: number; meter: number; streak: number; gain: number; serial: number; label: string; bonus?: boolean };
 export type Best = { strut: number; rhythm: number };
 
 export type Hooks = {

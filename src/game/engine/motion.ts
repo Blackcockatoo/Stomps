@@ -108,7 +108,7 @@ export function tickEffects(g: Arcade, dt: number) {
   if (!g.reducedMotion && g.trailClock >= 1 / 30) {
     g.trailClock = 0;
     const step = g.queue[g.stepIndex];
-    const img = step && g.clips.get(step.clip)?.[g.frame];
+    const img = step && g.mossFrames(step.clip)?.[g.frame];
     if (img && (step.clip === "slide" || step.clip === "spin" || g.rewardPower > 0.3)) {
       g.trails.push({ img, x: mossX(g) + g.body.x, y: GROUND + CELL.solePad + g.body.y, flip: step.flip || g.faceLeft, life: 0.16 });
       g.trails = g.trails.slice(-6);

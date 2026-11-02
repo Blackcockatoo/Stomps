@@ -3,6 +3,7 @@ import type { Arcade } from "../arcade";
 import { pointsFor } from "../feel";
 import { ROUTE_PX, STREETS, isPrefix, sameTrigger, streetX, windowsFor, type StreetSpec } from "../route";
 import { GROUND, MOSS_X } from "./types";
+import { BONUS_MULT, bonusViews, tickBonus, tickDoor } from "../bonus";
 
 export function tickStrut(g: Arcade, dt: number) {
   const boosting = g.keys.has("A") && !g.keys.has("C");
@@ -23,6 +24,14 @@ export function tickStrut(g: Arcade, dt: number) {
   }
   if (g.runKind !== "practice") g.scanStreets();
   g.flushStreet();
+  if (g.bonus) {
+    // Inside the bonus world the route (finish line, laps) is on hold.
+    tickBonus(g);
+    recordFreeBest(g);
+    return;
+  }
+  tickDoor(g);
+  if (g.bonus) return;
   if (g.runKind === "route" && g.scroll + MOSS_X >= ROUTE_PX) {
     g.finishRoute();
     return;
@@ -30,10 +39,15 @@ export function tickStrut(g: Arcade, dt: number) {
   const lap = Math.floor((g.scroll + MOSS_X) / ROUTE_PX);
   if (lap > g.lap) {
     g.lap = lap;
+    g.lapHits = 0;
     g.callout = "THE LONG WAY HOME";
     g.calloutLife = 1.5;
     g.groove.combo();
   }
+  recordFreeBest(g);
+}
+
+function recordFreeBest(g: Arcade) {
   if (g.runKind === "free" && g.score > g.bestStrut) {
     g.bestStrut = g.score;
     g.recordStrutBest();
@@ -52,7 +66,7 @@ export function finishRoute(g: Arcade) {
   g.hooks.onResult({ kind: "route", seconds: g.now, score: g.score,
     personalBest: g.bestRoute, newRecord,
     perfect: g.streetPerfect, fresh: g.streetGood, late: 0,
-    stumble: g.streetMiss, maxCombo: g.routeMaxChain });
+    stumble: g.streetMiss, maxCombo: g.routeMaxChain, bonus: g.bonusCleared });
   g.hooks.onMode("result");
 }
 
@@ -60,16 +74,26 @@ export function mossWorld(g: Arcade) {
   return g.scroll + g.mossX();
 }
 
+type View = {
+  spec: StreetSpec;
+  world: number;
+  dist: number;
+  key: string;
+  win: { perfect: number; good: number; telegraph: number };
+};
+
 export function streetViews(g: Arcade) {
   const moss = g.mossWorld();
   const lap = Math.floor(moss / ROUTE_PX);
-  const views: {
-    spec: StreetSpec;
-    world: number;
-    dist: number;
-    key: string;
-    win: { perfect: number; good: number; telegraph: number };
-  }[] = [];
+  const views: View[] = [];
+  if (g.bonus) {
+    for (const view of bonusViews(g)) {
+      const win = windowsFor(g.flow, view.spec);
+      if (view.dist > win.telegraph + 420 || view.dist < -win.good - 90) continue;
+      views.push({ ...view, win });
+    }
+    return views;
+  }
   for (const spec of STREETS) {
     const local = streetX(spec);
     for (const lapK of [lap - 1, lap, lap + 1]) {
@@ -85,26 +109,31 @@ export function streetViews(g: Arcade) {
 }
 
 export function scanStreets(g: Arcade) {
+  if (g.bonus) {
+    for (const view of bonusViews(g)) scanOne(g, view.key, view.dist, windowsFor(g.flow, view.spec));
+    return;
+  }
   const moss = g.mossWorld();
   const lap = Math.floor(moss / ROUTE_PX);
   for (const spec of STREETS) {
     const local = streetX(spec);
     for (const lapK of [lap - 1, lap, lap + 1]) {
       if (lapK < 0) continue;
-      const dist = local + lapK * ROUTE_PX - moss;
-      const win = windowsFor(g.flow, spec);
-      const key = `${spec.uid}:${lapK}`;
-      if (g.streetMarks.has(key)) continue;
-      if (dist < win.telegraph && dist > -win.good && !g.streetCued.has(key)) {
-        g.streetCued.add(key);
-        g.groove.cue();
-      }
-      if (dist < -win.good && dist > -480) {
-        g.streetMarks.set(key, { kind: "miss", at: g.now });
-        g.streetMiss += 1;
-        g.announce("Missed");
-      }
+      scanOne(g, `${spec.uid}:${lapK}`, local + lapK * ROUTE_PX - moss, windowsFor(g.flow, spec));
     }
+  }
+}
+
+function scanOne(g: Arcade, key: string, dist: number, win: View["win"]) {
+  if (g.streetMarks.has(key)) return;
+  if (dist < win.telegraph && dist > -win.good && !g.streetCued.has(key)) {
+    g.streetCued.add(key);
+    g.groove.cue();
+  }
+  if (dist < -win.good && dist > -480) {
+    g.streetMarks.set(key, { kind: "miss", at: g.now });
+    g.streetMiss += 1;
+    g.announce("Missed");
   }
 }
 
@@ -134,11 +163,13 @@ export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: num
   if (kind === "perfect") g.streetPerfect += 1;
   else g.streetGood += 1;
   const variety = [1, 1.1, 1.4, 1.8][Math.min(3, new Set(g.recent).size)] ?? 1;
-  const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety);
+  const mult = g.bonus ? BONUS_MULT : 1;
+  const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult);
   g.score += points;
+  if (!g.bonus) g.lapHits += 1;
   g.meter = Math.min(1, g.meter + (kind === "perfect" ? 0.07 : 0.04));
-  g.callout = spec.feedback;
-  g.announce(`${kind === "perfect" ? "Perfect" : "Good"}: ${spec.feedback.toLowerCase()}`);
+  g.callout = mult > 1 ? `${spec.feedback} ×${mult}` : spec.feedback;
+  g.announce(`${kind === "perfect" ? "Perfect" : "Good"}: ${spec.feedback.toLowerCase()}${mult > 1 ? `, times ${mult}` : ""}`);
   g.calloutLife = 1.05;
   g.popups.push({
     text: `+${points}`,

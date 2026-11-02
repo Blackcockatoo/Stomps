@@ -1,0 +1,18 @@
+{
+  "name": "MOSS STOMPER / NEON STRUT",
+  "short_name": "MOSS STOMPER",
+  "description": "Stride, stomp and chain your swagger through Frankston. A Blue $nake Studio arcade original.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#090e13",
+  "theme_color": "#090e13",
+  "categories": ["games", "music"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

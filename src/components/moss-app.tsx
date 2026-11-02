@@ -1,13 +1,15 @@
 import { styleRank } from "@/game/feel";
 import { useEffect, useRef, useState } from "react";
+import { positionX, visibleSpan } from "@/game/view";
 import { Arcade, COMBOS, CALIBRATION_MIN_TAPS, CALIBRATION_WARMUP, type Btn, type Calibration, type Mode, type ResultStats, type LiveHud } from "@/game/arcade";
 import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, type ClipInfo } from "@/game/clips";
 import { ROUTE_CARDS } from "@/game/route";
 import { REPORT } from "@/game/report";
 import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
-import { DEFAULT_KEYS, type KeyMap } from "@/game/storage";
+import { DEFAULT_KEYS, type KeyMap, type Skin } from "@/game/storage";
+import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from "@/game/chart";
 
-type Panel = "none" | "lab" | "notes" | "hints" | "stages" | "settings";
+type Panel = "none" | "lab" | "notes" | "hints" | "stages" | "settings" | "rhythm";
 type AudioPrefs = { volume: number; muted: boolean };
 /** Taps collected per calibration attempt (the first CALIBRATION_WARMUP are ignored). */
 const CAL_TAPS = 12;
@@ -21,6 +23,7 @@ const PADS: { id: Btn; name: string; idle: string; down: string; cls: string }[]
 
 export function MossApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const measureRef = useRef<() => void>(() => {});
   const arcadeRef = useRef<Arcade | null>(null);
   const [hud, setHud] = useState<LiveHud>({score:0,meter:0,streak:0,gain:0,serial:0,label:""});
   const [mode, setMode] = useState<Mode>("menu");
@@ -41,6 +44,8 @@ export function MossApp() {
   const [audio, setAudio] = useState<AudioPrefs>({ volume: 0.8, muted: false });
   const [keymap, setKeymap] = useState<KeyMap>({ ...DEFAULT_KEYS });
   const [offset, setOffset] = useState(0);
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [skin, setSkin] = useState<Skin>("classic");
   /** Which action is waiting for a new key (key remap), if any. */
   const [capture, setCapture] = useState<Btn | null>(null);
   const captureRef = useRef<Btn | null>(null);
@@ -82,9 +87,21 @@ export function MossApp() {
       onCalTap: (count) => onCalTap(count),
     });
     arcadeRef.current = arcade;
+    const measure = () => {
+      const style = getComputedStyle(canvas);
+      const box = canvas.getBoundingClientRect();
+      const scale = Math.max(box.width / 480, box.height / 270);
+      const overflow = Math.max(0, 480 * scale - box.width);
+      arcade.setView(visibleSpan(box.width, box.height, style.objectFit, positionX(style.objectPosition, overflow)));
+    };
+    measureRef.current = measure;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(canvas);
     setAudio({ ...arcade.save.audio });
     setKeymap({ ...arcade.save.keys });
     setOffset(arcade.audioOffset);
+    setDifficulty(arcade.difficulty);
+    setSkin(arcade.skin);
     arcade.start();
     const onKey = (event: KeyboardEvent) => {
       const waiting = captureRef.current;
@@ -135,6 +152,7 @@ export function MossApp() {
     window.addEventListener("keyup", onKey);
     window.addEventListener("blur", release);
     return () => {
+      observer?.disconnect();
       window.clearTimeout(announceRef.current.timer);
       arcade.destroy();
       document.removeEventListener("visibilitychange", onVisibility);
@@ -143,6 +161,12 @@ export function MossApp() {
       window.removeEventListener("blur", release);
     };
   }, []);
+
+  // Layout (and so the visible slice of the playfield) changes with the mode classes.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => measureRef.current());
+    return () => cancelAnimationFrame(frame);
+  }, [mode, scene]);
 
   const playing = mode === "strut" || mode === "rhythm" || mode === "pause";
   const loadPct = progress.total ? Math.floor((progress.done / progress.total) * 100) : 0;
@@ -192,20 +216,23 @@ export function MossApp() {
     setPanel("none");
   }
 
-  function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" = "free") {
+  function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" = "free", chart: Difficulty = difficulty) {
     setRunKind(kind);
     setLanded(null);
     setPanel("none");
     setResult(null);
     if (next === "strut") arcadeRef.current?.playStrut(kind);
-    else arcadeRef.current?.playRhythm();
+    else {
+      setDifficulty(chart);
+      arcadeRef.current?.playRhythm(chart);
+    }
   }
 
   return (
     <div className={`shell mode-${mode} scene-${scene}`}>
       <header className="cabinet-header"><span><b>B$S</b> / MOSS STOMPER</span><span className="signal">● NEON STRUT / HYPER DRIVE</span></header>
-      {playing ? <section className={`live-hud ${hud.meter >= 1 ? "charged" : ""}`} aria-label="Live score and style">
-        <div className="score-block"><span className="hud-label">TOTAL RESPECT</span><strong>{hud.score.toLocaleString()}</strong></div>
+      {playing ? <section className={`live-hud ${hud.meter >= 1 ? "charged" : ""} ${hud.bonus ? "bonus" : ""}`} aria-label="Live score and style">
+        <div className="score-block"><span className="hud-label">TOTAL RESPECT{hud.bonus ? <b className="bonus-badge">BONUS ×2</b> : null}</span><strong>{hud.score.toLocaleString()}</strong></div>
         <div className="rank-block"><span className="hud-label">STREET STATUS</span><strong>{styleRank(hud.streak)}</strong></div>
         <div className="chain-block"><span className="hud-label">ON BEAT</span><strong>×{hud.streak}</strong></div>
         <button type="button" className="style-block" disabled={hud.meter < 1 || mode === "pause"} onClick={() => arcadeRef.current?.unleash()} aria-label={hud.meter >= 1 ? "Unleash Mossquake" : "Build style to unlock Mossquake"}>
@@ -294,8 +321,8 @@ export function MossApp() {
                 <button type="button" className="cab-btn primary" disabled={!ready} onClick={() => go("strut")}>
                   STREET STRUT / FREE PLAY
                 </button>
-                <button type="button" className="cab-btn gold" disabled={!ready} onClick={() => go("rhythm")}>
-                  RHYTHM ROYALTY
+                <button type="button" className="cab-btn gold" disabled={!ready} onClick={() => setPanel("rhythm")}>
+                  RHYTHM ROYALTY <small>{DIFFICULTY_INFO[difficulty].label}</small>
                 </button>
                 <button type="button" className="cab-btn" onClick={() => setPanel("lab")}>
                   ANIMATION LAB
@@ -322,7 +349,7 @@ export function MossApp() {
           <div className="overlay">
             <div>
               <h2 className="brand">
-                {result.kind === "route" ? "HOME IN STYLE" : "ROYALTY"}
+                {result.kind === "route" ? "HOME IN STYLE" : `ROYALTY / ${DIFFICULTY_INFO[result.difficulty ?? difficulty].label}`}
                 <em>
                   {result.score} · perfect {result.perfect} · fresh {result.fresh} · late {result.late} · stumbled{" "}
                   {result.stumble} · chain {result.maxCombo}
@@ -330,7 +357,7 @@ export function MossApp() {
               </h2>
               <div className="result-detail">
                 <strong>{result.newRecord ? "PERSONAL BEST / " : ""}{result.perfect + result.fresh === 0 ? "FIND YOUR FEET" : result.stumble === 0 ? "CLEAN FOOTWORK" : "KEEP YOUR FLOW"}</strong>
-                <p>{result.kind === "route" ? `${result.perfect} perfect encounters · ${result.fresh} clean · ${result.stumble} missed. Home in ${Math.floor((result.seconds ?? 0) / 60)}m ${Math.floor((result.seconds ?? 0) % 60)}s.` : "Hit notes as they reach the line. Keep long notes held until their tail clears."}</p>
+                <p>{result.kind === "route" ? `${result.perfect} perfect encounters · ${result.fresh} clean · ${result.stumble} missed.${result.bonus ? ` ${result.bonus} bonus world${result.bonus > 1 ? "s" : ""} cleared.` : ""} Home in ${Math.floor((result.seconds ?? 0) / 60)}m ${Math.floor((result.seconds ?? 0) % 60)}s.` : "Hit notes as they reach the line. Keep long notes held until their tail clears."}</p>
                 <small>{result.stumble ? "Next run: watch the cue, then plant the action as it reaches you." : "Next run: link your signature moves between the cues."}</small>
               </div>
               <div className="menu-actions">
@@ -362,6 +389,7 @@ export function MossApp() {
             {panel === "hints" ? <Hints /> : null}
             {panel === "notes" ? <Notes /> : null}
             {panel === "stages" ? <Stages /> : null}
+            {panel === "rhythm" ? <Chooser current={difficulty} ready={ready} onPick={(chart) => go("rhythm", "free", chart)} /> : null}
             {panel === "settings" ? (
               <Settings
                 audio={audio}
@@ -388,6 +416,12 @@ export function MossApp() {
                 onResetBests={() => {
                   arcadeRef.current?.resetBests();
                   announce("Best scores reset");
+                }}
+                skin={skin}
+                onSkin={(next) => {
+                  arcadeRef.current?.setSkin(next);
+                  setSkin(next);
+                  announce(next === "cream" ? "Cream hoodie on" : "Red hoodie on");
                 }}
               />
             ) : null}
@@ -496,6 +530,33 @@ function Hints() {
   );
 }
 
+/** Rhythm Royalty pre-start: one press picks the chart and starts it; the last pick has focus. */
+function Chooser(props: { current: Difficulty; ready: boolean; onPick: (difficulty: Difficulty) => void }) {
+  return (
+    <div className="chooser">
+      <h2>RHYTHM ROYALTY</h2>
+      <p>Pick a chart. Your pick is remembered for next time. Same groove, same 104 BPM.</p>
+      <div className="menu-actions" role="group" aria-label="Chart difficulty">
+        {DIFFICULTIES.map((level) => (
+          <button
+            key={level}
+            type="button"
+            className={`cab-btn ${level === props.current ? "gold" : ""}`}
+            disabled={!props.ready}
+            autoFocus={level === props.current}
+            aria-describedby={`chart-${level}`}
+            onClick={() => props.onPick(level)}
+          >
+            {DIFFICULTY_INFO[level].label}
+            {level === props.current ? " · LAST PICK" : ""}
+            <small id={`chart-${level}`}>{DIFFICULTY_INFO[level].blurb}</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ms(seconds: number) {
   const value = Math.round(seconds * 1000);
   return `${value > 0 ? "+" : ""}${value} ms`;
@@ -519,6 +580,8 @@ function Settings(props: {
   onCalCancel: () => void;
   onCalApply: (seconds: number) => void;
   onResetBests: () => void;
+  skin: Skin;
+  onSkin: (skin: Skin) => void;
 }) {
   const { audio, keymap, capture, calTaps, calResult } = props;
   const [confirmReset, setConfirmReset] = useState(false);
@@ -541,6 +604,16 @@ function Settings(props: {
         <button type="button" className="cab-btn" aria-pressed={audio.muted} onClick={() => props.onAudio({ ...audio, muted: !audio.muted })}>
           {audio.muted ? "UNMUTE" : "MUTE"}
         </button>
+      </div>
+
+      <h3>LOOK</h3>
+      <p>Moss&apos;s hoodie. Cream is recoloured live from the original red frames.</p>
+      <div className="setting-row" role="group" aria-label="Hoodie">
+        {(["classic", "cream"] as const).map((option) => (
+          <button key={option} type="button" className="cab-btn" aria-pressed={props.skin === option} onClick={() => props.onSkin(option)}>
+            {option === "classic" ? "RED HOODIE" : "CREAM HOODIE"}
+          </button>
+        ))}
       </div>
 
       <h3>RHYTHM SYNC</h3>
@@ -648,7 +721,7 @@ function Stages() {
       <h2>STAGE CARDS</h2>
       <p>
         The route is one continuous pavement: van, crossing, station, strip, pier, home. Time of day is a separate
-        grade. These stills are layout references from the world pack, not the playfield.
+        grade. The stills below come from the world pack; the playfield is drawn by the engine from the same layout.
       </p>
       {ROUTE_CARDS.map((stage) => (
         <div key={stage.id}>
@@ -657,7 +730,7 @@ function Stages() {
           <p>{stage.note}</p>
         </div>
       ))}
-      {STAGE_CONCEPTS.map((stage) => (
+      {STAGE_CONCEPTS.filter((stage) => !ROUTE_CARDS.some((card) => card.src === stage.src)).map((stage) => (
         <div key={stage.id}>
           <h3>{stage.name}</h3>
           <img className="stage-card" src={stage.src} alt={`${stage.name}: world pack concept still`} />

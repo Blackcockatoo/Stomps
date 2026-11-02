@@ -2,38 +2,46 @@
 import type { Arcade } from "../arcade";
 import { ROUTE_PX, gradeAt, triggerLabel, zoneSample } from "../route";
 import { cycleOf } from "../scenery";
+import { BONUS_MULT } from "../bonus";
 import { GROUND, H, MOSS_X, W } from "./types";
 
 export function drawHud(g: Arcade) {
-  const sample = zoneSample(g.scroll + (g.mode === "menu" ? 240 : MOSS_X));
+  const sample = zoneSample(g.routeScroll() + (g.mode === "menu" ? 240 : MOSS_X));
   const phase = gradeAt(cycleOf(g.now)).phase.toUpperCase();
   if (g.mode === "menu") {
     ctxLabel(g.ctx2d, `${sample.zone.name} · ${phase}`, 12, 22, "#f5c518", 8);
     return;
   }
   const ctx = g.ctx2d;
+  const L = g.view.left + 12;
+  const R = g.view.right - 12;
+  /** Portrait phones crop the playfield; stack the bottom line and drop the cue label below the controls. */
+  const narrow = R - L < W * 0.6;
   ctx.font = "bold 9px monospace";
   if (g.mode === "strut") {
     const lead = g.runKind === "practice" ? null : g.leadStreet();
-    ctx.fillStyle = "#b7a89a";
-    ctx.fillText(`${sample.zone.name}  ${phase}`, 12, H - 12);
+    ctx.fillStyle = g.bonus ? "#ff3ea5" : "#b7a89a";
+    ctx.fillText(g.bonus ? `BONUS WORLD ×${BONUS_MULT}  ${phase}` : `${sample.zone.name}  ${phase}`, L, H - 12);
     if (g.runKind === "route") {
-      const progress = Math.min(1, (g.scroll + MOSS_X) / ROUTE_PX);
-      ctx.fillStyle = "#192231"; ctx.fillRect(12, H - 27, W - 24, 3);
-      ctx.fillStyle = "#f5c518"; ctx.fillRect(12, H - 27, (W - 24) * progress, 3);
-      ctx.textAlign = "right"; ctx.fillText(`${Math.floor(g.now / 60)}:${String(Math.floor(g.now % 60)).padStart(2, "0")} / ${Math.floor(progress * 100)}% HOME`, W - 12, H - 12); ctx.textAlign = "left";
+      const progress = Math.min(1, (g.routeScroll() + MOSS_X) / ROUTE_PX);
+      ctx.fillStyle = "#192231"; ctx.fillRect(L, H - 27, R - L, 3);
+      ctx.fillStyle = "#f5c518"; ctx.fillRect(L, H - 27, (R - L) * progress, 3);
+      ctx.textAlign = "right"; ctx.fillText(`${Math.floor(g.now / 60)}:${String(Math.floor(g.now % 60)).padStart(2, "0")} / ${Math.floor(progress * 100)}% HOME`, R, narrow ? H - 33 : H - 12); ctx.textAlign = "left";
     }
     if (lead) {
       ctx.fillStyle = lead.hot ? "#f5c518" : "#f4efe6";
       ctx.textAlign = "right";
-      ctx.fillText(triggerLabel(lead.spec.trigger), W - 12, 20);
+      ctx.fillText(triggerLabel(lead.spec.trigger), R, narrow ? 58 : 20);
       ctx.textAlign = "left";
     }
   }
   if (g.calloutLife > 0) {
     ctx.fillStyle = "#f5c518";
     ctx.font = "11px 'Press Start 2P', monospace";
-    ctx.fillText(g.callout, 12, 43);
+    const width = ctx.measureText(g.callout).width;
+    const fit = width > R - L ? Math.max(6, Math.floor(11 * (R - L) / width)) : 11;
+    if (fit !== 11) ctx.font = `${fit}px 'Press Start 2P', monospace`;
+    ctx.fillText(g.callout, L, 43);
   }
   for (const popup of g.popups) {
     ctx.globalAlpha = Math.max(0, Math.min(1, popup.life * 2));
@@ -44,7 +52,7 @@ export function drawHud(g: Arcade) {
     ctx.lineWidth = points ? 4 : 3;
     ctx.strokeStyle = "#080d12";
     ctx.lineJoin = "round";
-    const x = Math.max(12,Math.min(W-ctx.measureText(popup.text).width-12,popup.x));
+    const x = Math.max(L,Math.min(R-ctx.measureText(popup.text).width,popup.x));
     const pop = g.reducedMotion ? 1 : 1 + Math.sin(Math.min(1, (1-popup.life)*5)*Math.PI)*.16;
     ctx.save();
     ctx.translate(x, popup.y);
@@ -59,7 +67,9 @@ export function drawHud(g: Arcade) {
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#f5c518";
     ctx.font = "14px 'Press Start 2P', monospace";
-    ctx.fillText("HOLD UP", 150, 130);
+    ctx.textAlign = "center";
+    ctx.fillText("HOLD UP", (g.view.left + g.view.right) / 2, 130);
+    ctx.textAlign = "left";
   }
 }
 
@@ -119,6 +129,6 @@ export function emitHud(g: Arcade, dt: number) {
   g.hudClock += dt;
   if (g.hudClock >= 1 / 30) {
     g.hudClock = 0;
-    g.hooks.onHud?.({ score: Math.round(g.displayScore), meter: g.meter, streak: g.streak, gain: g.rewardLife > 0 ? g.gain : 0, serial: g.gainSerial, label: g.callout });
+    g.hooks.onHud?.({ score: Math.round(g.displayScore), meter: g.meter, streak: g.streak, gain: g.rewardLife > 0 ? g.gain : 0, serial: g.gainSerial, label: g.callout, bonus: !!g.bonus });
   }
 }

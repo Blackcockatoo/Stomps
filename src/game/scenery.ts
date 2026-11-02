@@ -2,6 +2,7 @@ import type { Btn } from "./arcade-types";
 import { keyLabel } from "./keys";
 import {
   CYCLE_SEC,
+  PIER_DECK,
   ROUTE_PX,
   ZONES,
   mod,
@@ -136,19 +137,76 @@ function paintShops(ctx: Ctx, glow: Ctx, marks: Ctx, width: number, base: number
     r(ctx, x + 10, base - 96, 30, 40, "#10141c");
     r(ctx, x + 48, base - 84, 24, 68, "#1a1418");
     r(glow, x + 14, base - 90, 22, 26, "#f0d090");
+    // Neon shop sign over every other awning.
+    if (i % 2 === 0) {
+      r(ctx, x + 18, base - 106, 48, 9, "#120e14");
+      r(glow, x + 20, base - 105, 44, 2, aw);
+      r(glow, x + 20, base - 100, 44, 2, aw);
+    }
     x += 108;
     i += 1;
   }
 }
 
 function paintPier(ctx: Ctx, glow: Ctx, marks: Ctx, width: number, base: number) {
-  for (let x = 0; x < width; x += 20) r(marks, x, 22, 14, 3, "rgba(60, 48, 36, 0.45)");
-  for (let x = 28; x < width; x += 64) {
+  const deck = Math.round(width * PIER_DECK);
+  // Promenade approach: the foreshore plates sit behind these lamps and benches.
+  for (let x = 0; x < deck; x += 20) r(marks, x, 22, 14, 3, "rgba(60, 48, 36, 0.45)");
+  for (let x = 28; x < deck - 16; x += 64) {
     r(ctx, x, base - 108, 4, 106, "#241c18");
     r(glow, x - 6, base - 116, 16, 10, "#f5c518");
     r(ctx, x - 18, base - 28, 40, 4, "#3a342c");
     r(ctx, x - 18, base - 18, 4, 16, "#3a342c");
     r(ctx, x + 18, base - 18, 4, 16, "#3a342c");
+  }
+  // The pier proper: open water behind and under the boards.
+  const span = width - deck;
+  r(ctx, deck, base - 66, span, 66, "#0d2738");
+  r(ctx, deck, base - 66, span, 3, "#2c5f78");
+  for (let i = 0; i < span / 9; i++) {
+    const x = deck + hash(i * 31 + 7) * span;
+    const y = base - 60 + hash(i * 77 + 3) * 50;
+    r(ctx, x, y, 6 + hash(i * 13 + 1) * 14, 1, i % 3 ? "#1f4a62" : "#4c86a0");
+  }
+  // Back rail and its posts, then the lamps along it.
+  r(ctx, deck, base - 34, span, 3, "#4a3828");
+  r(ctx, deck, base - 22, span, 2, "#3a2c20");
+  for (let x = deck; x < width; x += 22) r(ctx, x, base - 34, 3, 34, "#3a2c20");
+  for (let x = deck + 40; x < width - 8; x += 96) {
+    r(ctx, x, base - 104, 4, 104, "#1c1612");
+    r(ctx, x - 8, base - 108, 20, 5, "#1c1612");
+    r(glow, x - 10, base - 104, 24, 8, "#f5c518");
+    r(glow, x - 2, base - 66, 8, 40, "rgba(245, 197, 24, 0.35)");
+  }
+  r(ctx, deck, base - 8, span, 8, "#4a3626");
+
+  // Deck boards (marks layer is drawn over the pavement plate at screen y 196).
+  r(marks, deck - 6, 0, 6, 54, "#2a1e16");
+  r(marks, deck, 0, span, 52, "#5c4430");
+  r(marks, deck, 0, span, 3, "#7a5c40");
+  for (let x = deck; x < width; x += 11) {
+    r(marks, x, 0, 1, 52, "#2a1e16");
+    if (hash(x) > 0.6) r(marks, x + 3, 6 + hash(x * 13 + 5) * 36, 4, 1, "#6c5038");
+  }
+  r(marks, deck, 50, span, 6, "#2e2018");
+  r(marks, width - 5, 0, 5, 56, "#2a1e16");
+  r(ctx, width - 6, base - 40, 6, 40, "#2a1e16");
+  // Water under the deck with pilings and cross-bracing.
+  r(marks, deck, 56, span, 18, "#0b2233");
+  for (let i = 0; i < span / 14; i++) r(marks, deck + hash(i * 53 + 11) * span, 60 + hash(i * 29 + 2) * 12, 8, 1, "#2c5f78");
+  marks.strokeStyle = "#24180f";
+  marks.lineWidth = 2;
+  for (let x = deck + 12; x < width; x += 48) {
+    r(marks, x, 56, 6, 18, "#2a1e16");
+    r(marks, x, 70, 6, 2, "#4c86a0");
+    if (x + 48 < width) {
+      marks.beginPath();
+      marks.moveTo(x + 6, 57);
+      marks.lineTo(x + 48, 69);
+      marks.moveTo(x + 6, 69);
+      marks.lineTo(x + 48, 57);
+      marks.stroke();
+    }
   }
 }
 
@@ -396,4 +454,82 @@ function hash(n: number) {
 
 export function cycleOf(now: number) {
   return mod(now / CYCLE_SEC, 1);
+}
+
+// ── Bonus world ──────────────────────────────────────────────────────────
+
+const BONUS_W = 480;
+
+/** Neon backdrop for the bonus-world segment: night sky, sun bands, pillars, grid floor. */
+export function paintBonusWorld(ctx: Ctx, scroll: number, now: number) {
+  const sky = ctx.createLinearGradient(0, 0, 0, 196);
+  sky.addColorStop(0, "#090418");
+  sky.addColorStop(0.7, "#2a0b3d");
+  sky.addColorStop(1, "#5a1450");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, BONUS_W, 196);
+  // Banded sun.
+  ctx.save();
+  ctx.fillStyle = "#f5c518";
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.arc(BONUS_W / 2, 150, 54, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = "#2a0b3d";
+  for (let i = 0; i < 6; i += 1) ctx.fillRect(BONUS_W / 2 - 60, 108 + i * 7, 120, 1 + i * 0.6);
+  ctx.restore();
+  // Parallax neon pillars.
+  const pulse = 0.55 + 0.45 * Math.sin(now * 6);
+  for (let i = -1; i < 7; i += 1) {
+    const x = Math.round(i * 90 - ((scroll * 0.5) % 90));
+    r(ctx, x, 70, 10, 126, "#14081f");
+    ctx.fillStyle = i % 2 ? `rgba(255,62,165,${0.5 + 0.4 * pulse})` : `rgba(64,224,255,${0.5 + 0.4 * pulse})`;
+    ctx.fillRect(x + 4, 74, 2, 118);
+  }
+  // Grid floor.
+  r(ctx, 0, 196, BONUS_W, 74, "#120720");
+  ctx.strokeStyle = "rgba(255,62,165,0.65)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let y = 196, step = 3; y < 270; y += step, step += 2) {
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(BONUS_W, y + 0.5);
+  }
+  const off = scroll % 40;
+  for (let x = -400; x < BONUS_W + 400; x += 40) {
+    const top = x - off;
+    ctx.moveTo(BONUS_W / 2 + (top - BONUS_W / 2) * 0.25, 196);
+    ctx.lineTo(BONUS_W / 2 + (top - BONUS_W / 2) * 2.2, 270);
+  }
+  ctx.stroke();
+  r(ctx, 0, 195, BONUS_W, 2, "#40e0ff");
+}
+
+/** The bonus door prop on the pier: a lit arch when open, boarded when shut. */
+export function paintDoor(ctx: Ctx, x: number, ground: number, open: boolean, now: number) {
+  const left = Math.round(x - 20);
+  const top = ground - 86;
+  r(ctx, left - 4, top - 6, 48, 92, "#1a1220");
+  if (open) {
+    const pulse = 0.6 + 0.4 * Math.sin(now * 8);
+    ctx.save();
+    ctx.globalAlpha = 0.35 * pulse;
+    r(ctx, left - 14, top - 16, 68, 112, "#ff3ea5");
+    ctx.restore();
+    const glow = ctx.createLinearGradient(0, top, 0, ground);
+    glow.addColorStop(0, "#40e0ff");
+    glow.addColorStop(1, "#ff3ea5");
+    ctx.fillStyle = glow;
+    ctx.fillRect(left, top, 40, 86);
+    r(ctx, left + 6, top + 6, 28, 74, `rgba(255,255,255,${0.25 + 0.25 * pulse})`);
+  } else {
+    r(ctx, left, top, 40, 86, "#3a2a22");
+    for (let i = 0; i < 4; i += 1) r(ctx, left - 2, top + 10 + i * 20, 44, 5, "#6b4a32");
+  }
+  r(ctx, left - 6, top - 14, 52, 9, open ? "#f5c518" : "#4a4048");
+  ctx.fillStyle = open ? "#080d12" : "#b7a89a";
+  ctx.font = "bold 7px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(open ? "BONUS ×2" : "BONUS", left + 20, top - 7);
+  ctx.textAlign = "left";
 }

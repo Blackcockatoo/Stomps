@@ -93,6 +93,7 @@ export function finishRhythm(g: Arcade) {
   }
   g.hooks.onResult({
     kind: "rhythm",
+    difficulty: g.difficulty,
     score: g.score,
     perfect: g.counts.perfect,
     fresh: g.counts.fresh,
