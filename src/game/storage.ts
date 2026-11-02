@@ -36,6 +36,7 @@ export type SaveData = {
   difficulty: Difficulty;
   /** Moss's hoodie: the supplied red, or the runtime cream recolour (added in P2). */
   skin: Skin;
+  routeRecords: Record<string, { score: number; grade: string }>;
 };
 
 export type Skin = "classic" | "cream";
@@ -50,6 +51,7 @@ export function defaultSave(): SaveData {
     keys: { ...DEFAULT_KEYS },
     difficulty: "normal",
     skin: "classic",
+    routeRecords: {},
   };
 }
 
@@ -106,6 +108,10 @@ export function sanitize(raw: unknown): SaveData {
     keys: cleanKeys(r.keys),
     difficulty: isDifficulty(r.difficulty) ? r.difficulty : base.difficulty,
     skin: r.skin === "cream" ? "cream" : base.skin,
+    routeRecords: Object.fromEntries(["stratosphere-0", "stratosphere-1"].filter(k => r.routeRecords?.[k]).map(k => [k, {
+      score: score(r.routeRecords[k].score),
+      grade: ["D", "C", "B", "A", "S", "S+", "S++"].includes(r.routeRecords[k].grade) ? r.routeRecords[k].grade : "D",
+    }])),
   };
 }
 
@@ -161,5 +167,6 @@ export function updateSave(change: (save: SaveData) => void, s: StorageLike | nu
 export function resetBests(s: StorageLike | null = store()): SaveData {
   return updateSave((save) => {
     save.best = { strut: 0, rhythm: 0, route: 0 };
+    save.routeRecords = {};
   }, s);
 }

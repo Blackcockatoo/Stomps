@@ -59,7 +59,10 @@ export function tailMatch(seq: { btn: Btn; t: number }[], keys: Btn[]) {
   const tail = seq.slice(-keys.length);
   for (let i = 0; i < keys.length; i++) {
     if (tail[i]?.btn !== keys[i]) return false;
-    if (i > 0 && (tail[i]?.t ?? 0) - (tail[i - 1]?.t ?? 0) > 0.85) return false;
+    if (i > 0) {
+      const gap = (tail[i]?.t ?? 0) - (tail[i - 1]?.t ?? 0);
+      if (gap < 0.09 || gap > 0.85) return false;
+    }
   }
   return true;
 }

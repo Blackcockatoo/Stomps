@@ -65,8 +65,32 @@ test('without a track the synth groove plays as before', () => {
   g.ctx = ctx;
   g.noise = {};
   g.start();
+  g.pump(); // normal start schedules the base groove
   ctx.currentTime = 11;
   g.pump();
   assert.ok(made.oscillators > 0);
   assert.ok(!g.recorded);
+});
+
+test('FLOW and Golden layers enter on the existing bar clock and reset between runs', () => {
+  const g=new audio.Groove(), {ctx,made}=fakeCtx(); g.ctx=ctx;g.start();
+  g.setPerformance(5,true);
+  g['schedule'](7,10.1);assert.equal(g['layerFlow'],0);
+  g['schedule'](8,10.2);assert.equal(g['layerFlow'],5);assert.equal(g['bonusLayer'],true);
+  const before=made.oscillators;g['schedule'](10,10.3);assert.ok(made.oscillators>before);
+  g.start();assert.equal(g['layerFlow'],0);assert.equal(g['bonusLayer'],false);
+});
+
+test('movement accents coalesce on the audio grid and audio graphs disconnect on completion',()=>{
+ const g=new audio.Groove(),{ctx,made}=fakeCtx();g.ctx=ctx;g.noise={};g.start();g.setPerformance(2,false);g['schedule'](0,10.1);
+ const before=made.sources.length;g.footstep();g.footstep();g.footstep();
+ assert.equal(made.sources.length,before+1);
+ assert.ok(made.sources.at(-1).started[0]>=ctx.currentTime);
+});
+
+test('long browser stalls skip missed music instead of stacking hundreds of voices',()=>{
+ const g=new audio.Groove(),{ctx,made}=fakeCtx();g.ctx=ctx;g.noise={};g.start();g.pump();
+ const before=made.oscillators;ctx.currentTime+=120;g.pump();
+ assert.ok(made.oscillators-before<12);
+ assert.ok(g['nextStep']>=g.now());
 });

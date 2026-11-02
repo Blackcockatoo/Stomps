@@ -11,7 +11,7 @@ export function flowLevel(chain: number): number {
   return 1;
 }
 export function flowName(level: number): string {
-  return ["FIND YOUR FEET", "IN THE GROOVE", "LOCKED IN", "ELECTRIC", "UNTOUCHABLE", "PAVEMENT ROYALTY"][Math.max(0, Math.min(5, level))]!;
+  return ["FIND YOUR FEET", "THE STRUT", "LOCKED IN", "ELECTRIC", "UNTOUCHABLE", "PAVEMENT ROYALTY"][Math.max(0, Math.min(5, level))]!;
 }
 export function newFlow(): FlowState { return { chain: 0, longest: 0, level: 0, peak: 0, recoveryReadyAt: 0, recoveryUntil: 0, recoverTo: 0 }; }
 export function flowHit(state: FlowState): FlowState {
@@ -26,7 +26,7 @@ export function flowMiss(state: FlowState, now: number): FlowState {
     recoveryUntil: now + RECOVERY_WINDOW };
 }
 export function canRecover(state: FlowState, now: number, judgement: string): boolean {
-  return state.recoveryUntil > now && now >= state.recoveryReadyAt &&
+  return state.recoverTo > state.chain && state.recoveryUntil > now && now >= state.recoveryReadyAt &&
     (judgement === "PERFECT" || judgement === "FRESH");
 }
 export function flowRecover(state: FlowState, now: number, judgement: string): FlowState {

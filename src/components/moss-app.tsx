@@ -473,7 +473,7 @@ export function MossApp() {
           <div className="overlay">
             <div>
               <h2 className="brand">
-                {result.kind === "route" ? "HOME IN STYLE" : `ROYALTY / ${DIFFICULTY_INFO[result.difficulty ?? difficulty].label}`}
+                {result.kind === "route" ? `HOME IN STYLE / ${result.mastery ?? "D"}` : `ROYALTY / ${DIFFICULTY_INFO[result.difficulty ?? difficulty].label}`}
                 <em>
                   {result.score} · perfect {result.perfect} · fresh {result.fresh} · late {result.late} · stumbled{" "}
                   {result.stumble} · chain {result.maxCombo}{result.kind === "route" ? ` · FLOW ${result.flowPeak ?? 0}/5 · GOLD ${result.goldenBonus ?? 0}` : ""}
@@ -482,7 +482,7 @@ export function MossApp() {
               <div className="result-detail">
                 <strong>{result.newRecord ? "PERSONAL BEST / " : ""}{result.perfect + result.fresh === 0 ? "FIND YOUR FEET" : result.stumble === 0 ? "CLEAN FOOTWORK" : "KEEP YOUR FLOW"}</strong>
                 <p>{result.kind === "route" ? `${result.perfect} perfect encounters · ${result.fresh} clean · ${result.stumble} missed.${result.bonus ? ` ${result.bonus} bonus world${result.bonus > 1 ? "s" : ""} cleared.` : ""} Home in ${Math.floor((result.seconds ?? 0) / 60)}m ${Math.floor((result.seconds ?? 0) % 60)}s.` : "Hit notes as they reach the line. Keep long notes held until their tail clears."}</p>
-                <small>{result.stumble ? "Next run: watch the cue, then plant the action as it reaches you." : "Next run: link your signature moves between the cues."}</small>
+                <small>{result.kind === "route" ? `${result.accuracy ?? 0}% execution · ${result.techniqueCount ?? 0}/5 signature techniques · Route ${(result.variant ?? 0) + 1}. ${result.advice ?? "Watch the next cue."}` : result.stumble ? "Next run: watch the cue, then plant the action as it reaches you." : "Next run: link your signature moves between the cues."}</small>
               </div>
               <div className="menu-actions">
                 <button type="button" className="cab-btn primary" autoFocus onClick={() => result.kind === "route" ? go("strut", "route") : go("rhythm")}>

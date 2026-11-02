@@ -28,6 +28,7 @@ buildSync({
     contents: [
       "export * as arcade from './src/game/arcade';",
       "export * as feel from './src/game/feel';",
+      "export * as mastery from './src/game/mastery';",
       "export * as flow from './src/game/engine/flow';",
       "export * as storage from './src/game/storage';",
       "export * as keys from './src/game/keys';",
@@ -62,7 +63,7 @@ const hooks = { onMode() {}, onResult() {}, onReady() {}, onError() {}, onBest()
 function stubGroove() {
   return {
     running: false, beatDur: 60 / 104, t: 0,
-    pump() {}, cue() {}, perfect() {}, miss() {}, unlock() {}, stomp() {}, style() {}, combo() {}, quake() {},
+    setPerformance() {}, footstep() {}, pump() {}, cue() {}, perfect() {}, miss() {}, unlock() {}, stomp() {}, style() {}, combo() {}, quake() {},
     suspend() {}, resume() {}, setLevel() {},
     start() { this.running = true; }, stop() { this.running = false; },
     now() { return this.t; },

@@ -32,6 +32,17 @@ export class Groove {
   private nextStep = 0;
   private stepIndex = 0;
   running = false;
+  private requestedFlow = 0;
+  private layerFlow = 0;
+  private bonusLayer = false;
+  private requestedBonus = false;
+  private accentStep = -1;
+
+  /** State changes enter on a bar boundary of the existing authoritative clock. */
+  setPerformance(level: number, bonus: boolean) {
+    this.requestedFlow = Math.max(0, Math.min(5, Math.floor(level)));
+    this.requestedBonus = bonus;
+  }
   /** Tap-along calibration: the loop is replaced by a plain beat click. */
   metronome = false;
   private master: GainNode | null = null;
@@ -145,6 +156,9 @@ export class Groove {
 
   start(metronome = false) {
     this.metronome = metronome;
+    this.requestedFlow = this.layerFlow = 0;
+    this.requestedBonus = this.bonusLayer = false;
+    this.accentStep = -1;
     this.unlock();
     if (!this.ctx) return;
     this.startAt = this.ctx.currentTime + 0.06;
@@ -170,7 +184,13 @@ export class Groove {
 
   pump() {
     if (!this.running || !this.ctx) return;
-    const horizon = this.now() + 0.14;
+    const now = this.now();
+    // A stalled tab skips stale notes instead of allocating a burst of old audio.
+    if (this.nextStep < now - 0.2) {
+      this.stepIndex = Math.ceil(now / this.stepDur);
+      this.nextStep = this.stepIndex * this.stepDur;
+    }
+    const horizon = now + 0.14;
     while (this.nextStep < horizon) {
       this.schedule(this.stepIndex, this.startAt + this.nextStep);
       this.stepIndex += 1;
@@ -202,6 +222,7 @@ export class Groove {
     osc.connect(amp);
     amp.connect(this.out());
     osc.start(when);
+    osc.onended = () => { osc.disconnect(); amp.disconnect(); };
     osc.stop(when + dur + 0.02);
   }
 
@@ -220,6 +241,7 @@ export class Groove {
     filter.connect(amp);
     amp.connect(this.out());
     src.start(when);
+    src.onended = () => { src.disconnect(); filter.disconnect(); amp.disconnect(); };
     src.stop(when + dur + 0.02);
   }
 
@@ -230,6 +252,16 @@ export class Groove {
       if (s % 2 === 0) this.tone(when, s % 8 === 0 ? 1320 : 880, 0.05, "square", 0.16);
       return;
     }
+    if (s % 8 === 0) { this.layerFlow = this.requestedFlow; this.bonusLayer = this.requestedBonus; }
+    // Additive layers also accompany an optional licensed recorded soundtrack.
+    if (this.layerFlow >= 2 && s % 4 === 1) this.burst(when, 0.025, 0.025, 5000);
+    if (this.layerFlow >= 3 && s % 4 === 2) {
+      const melody = [0, 3, 7, 10][Math.floor(s / 4)]!;
+      this.tone(when, 440 * 2 ** (melody / 12), this.stepDur * 0.7, "triangle", 0.028);
+    }
+    if (this.layerFlow >= 4 && s % 4 === 3) this.tone(when, 660, 0.09, "triangle", 0.018);
+    if (this.layerFlow >= 5 && s % 2 === 1) this.tone(when, 880 * 2 ** ([0, 3, 7, 10][Math.floor(s / 4)]! / 12), 0.07, "sine", 0.018);
+    if (this.bonusLayer && s % 2 === 0) this.tone(when, 523.25 * 2 ** ([0, 4, 7, 12][Math.floor(s / 4)]! / 12), 0.16, "triangle", 0.035);
     if (this.recorded) return;
     if (s % 4 === 0) this.tone(when, 150, 0.12, "sine", 0.55, 48);
     if (s === 4 || s === 12) {
@@ -283,9 +315,17 @@ export class Groove {
     this.tone(t, 110, 0.16, "sawtooth", 0.05, 70);
   }
 
+  footstep() {
+    if (!this.ctx || !this.running || this.layerFlow < 2) return;
+    const step = Math.ceil(this.now() / this.stepDur);
+    if (step === this.accentStep) return;
+    this.accentStep = step;
+    this.burst(this.startAt + step * this.stepDur, 0.035, 0.025, 2800);
+  }
+
   quake() {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
+    const t = this.running ? this.startAt + Math.ceil(this.now() / this.stepDur) * this.stepDur : this.ctx.currentTime;
     this.tone(t, 90, 0.45, "sine", 0.7, 28);
     this.burst(t, 0.4, 0.4, 120);
     this.tone(t + 0.08, 196, 0.3, "square", 0.08);

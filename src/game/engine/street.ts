@@ -1,5 +1,7 @@
 /** Street Strut: movement, the authored route (THE LONG WAY HOME), street windows and route results. */
 import type { Arcade } from "../arcade";
+import { assess } from "../mastery";
+import { updateSave } from "../storage";
 import { pointsFor } from "../feel";
 import { flowHit, flowMiss, flowMultiplier, flowName } from "./flow";
 import { ROUTE_PX, STREETS, streetForLap, streetPrefix, streetSolution, streetTechnique, streetX, windowsFor, type StreetQuality, type StreetSpec } from "../route";
@@ -61,13 +63,23 @@ export function finishRoute(g: Arcade) {
   g.mode = "result";
   g.keys.clear();
   g.groove.stop();
-  const newRecord = g.score > g.bestRoute;
-  if (newRecord) {
+  const mastery = assess({ perfect: g.streetPerfect, good: g.streetGood, missed: g.streetMiss,
+    expected: STREETS.length + [...g.streetMarks.keys()].filter(key => key.startsWith("bonus-")).length, longest: g.flowState.longest, techniques: g.techniques.size,
+    bonus: g.bonusCleared, golden: g.goldenCleared });
+  const recordKey = `stratosphere-${g.runSeed}`;
+  const priorBest = g.save.routeRecords[recordKey]?.score ?? 0;
+  const newRecord = g.score > priorBest;
+  g.save = updateSave(save => {
+    if (newRecord) save.routeRecords[recordKey] = { score: g.score, grade: mastery.grade };
+  });
+  if (g.score > g.bestRoute) {
     g.bestRoute = g.score;
     g.recordRouteBest();
   }
   g.hooks.onResult({ kind: "route", seconds: g.now, score: g.score,
-    personalBest: g.bestRoute, newRecord,
+    personalBest: Math.max(priorBest, g.score), newRecord,
+    mastery: mastery.grade, accuracy: mastery.accuracy, advice: mastery.advice,
+    variant: g.runSeed, techniqueCount: g.techniques.size,
     perfect: g.streetPerfect, fresh: g.streetGood, late: 0,
     stumble: g.streetMiss, maxCombo: g.flowState.longest, bonus: g.bonusCleared,
     flowPeak: g.flowState.peak, goldenBonus: g.goldenCleared });
@@ -192,7 +204,12 @@ export function flushStreet(g: Arcade) {
 
 export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: number, perfectPx: number,
   quality: StreetQuality = "main", goodPx = perfectPx * 1.85) {
+  if (g.streetMarks.has(key) || !Number.isFinite(dist) || Math.abs(dist) > goodPx) return;
   const kind = Math.abs(dist) <= perfectPx ? "perfect" : "good";
+  if (quality === "technique" && g.lastTechnique) {
+    g.techniques.add(g.lastTechnique.name);
+    g.signatureHits += 1;
+  }
   // A controlled late dodge is a close call, not a random payout for misses.
   const closeCall = !spec.body && dist < -perfectPx && Math.abs(dist) >= goodPx * 0.8 && Math.abs(dist) <= goodPx;
   g.refundRecent(); // A button and its street encounter must never pay twice.
@@ -206,7 +223,7 @@ export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: num
   const mult = g.bonus ? (g.bonus.multiplier ?? BONUS_MULT) : 1;
   const execution = quality === "technique" ? 1.5 : quality === "alternative" ? 0.72 : 1;
   const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult *
-    flowMultiplier(g.flowState) * execution * (closeCall ? 1.35 : 1));
+    flowMultiplier(g.flowState) * execution * (closeCall ? 1.15 : 1));
   g.score += points;
   if (!g.bonus) g.lapHits += 1;
   g.meter = Math.min(1, g.meter + (kind === "perfect" ? 0.07 : 0.04));

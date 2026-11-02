@@ -16,6 +16,7 @@ export function doQuake(g: Arcade, fromRhythm: boolean) {
   g.quakeHit = false;
   g.meter = 0;
   g.buffered = null;
+  g.bufferedSteps = null;
   g.play([{ clip: "quake", speed: 1, once: true, flip: false }]);
   g.shake = 0.08;
   g.groove.quake();
@@ -65,17 +66,21 @@ export function award(g: Arcade, label: string, base: number, meterGain: number,
   const flow = !combo && planted ? 1.12 : 1;
   const timing = g.beatJudge();
   // Empty-ground action spam cannot outperform precision street encounters.
-  const strayAction = g.mode === "strut" && !combo ? 0.18 : 1;
+  const strayAction = g.mode === "strut" ? (combo ? 0.08 : 0.18) : 1;
+  // One empty-pavement reward per musical beat; holding/repeating cannot farm.
+  const beat = Math.floor(g.songTime() / g.groove.beatDur);
+  const eligible = g.runKind !== "practice" && g.runKind !== "route" && (g.mode !== "strut" || beat !== g.actionBeat);
+  if (eligible) g.actionBeat = beat;
   const mult =
     (timing === "PERFECT" ? 1.6 : timing === "FRESH" ? 1.25 : timing === "LATE" ? 0.85 : 0.55) *
     spam *
     (combo ? 1 : variety) *
     flow * strayAction;
-  const points = pointsFor(base * mult);
+  const points = eligible ? pointsFor(base * mult) : 0;
   g.score += points;
   const before = g.meter;
-  g.meter = Math.min(1, before + meterGain * spam * (timing === "OFF" ? 0.8 : 1) * strayAction);
-  if (!combo) g.grants.push({ points, meter: g.meter - before, at: g.now });
+  g.meter = Math.min(1, before + (eligible ? meterGain : 0) * spam * (timing === "OFF" ? 0.8 : 1) * strayAction);
+  g.grants.push({ points, meter: g.meter - before, at: g.now });
   g.grants = g.grants.filter((grant) => g.now - grant.at < 0.2);
   if (
     g.meter >= 1 &&
@@ -88,10 +93,10 @@ export function award(g: Arcade, label: string, base: number, meterGain: number,
   }
   if (timing === "PERFECT" || timing === "FRESH") g.streak += 1;
   else g.streak = 0;
-  if (g.streak > 0 && g.streak % 4 === 0) g.score += pointsFor(50);
+  if (g.mode !== "strut" && g.streak > 0 && g.streak % 4 === 0) g.score += pointsFor(50);
   g.callout = combo ? label : timing === "OFF" ? label : `${label} ${timing}`;
   g.calloutLife = combo ? 1.05 : 0.55;
-  g.popups.push({ text: `+${points}`, life: 1, x: MOSS_X + 20, y: GROUND - 120, gold: combo || timing === "PERFECT" });
+  if (points > 0) g.popups.push({ text: `+${points}`, life: 1, x: MOSS_X + 20, y: GROUND - 120, gold: combo || timing === "PERFECT" });
 }
 
 export function beatJudge(g: Arcade): Judge  {
