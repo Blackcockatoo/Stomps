@@ -277,6 +277,14 @@ export function MossApp() {
     setOffset(arcadeRef.current?.audioOffset ?? 0);
   }
 
+  // autoFocus is skipped while the first tile is still disabled (loading), so land focus once it can take it.
+  useEffect(() => {
+    if (attract || !ready || mode !== "menu" || panel !== "none") return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.closest(".menu-card")) return;
+    document.querySelector<HTMLButtonElement>(".menu-card .route-start")?.focus();
+  }, [attract, ready, mode, panel]);
+
   function closePanel() {
     if (calRef.current) cancelCalibration();
     setCapture(null);
