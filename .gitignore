@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.sites-runtime/
+.tanstack/
+.grok/preview.log
+*.tar.gz

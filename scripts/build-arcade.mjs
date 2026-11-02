@@ -1,0 +1,10 @@
+import { build } from 'esbuild';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+await mkdir('dist', {recursive:true});
+await cp('public','dist',{recursive:true});
+await build({entryPoints:['src/arcade-entry.tsx'],bundle:true,minify:true,format:'esm',outfile:'dist/arcade.js',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},alias:{'@':'./src'}});
+let css=await readFile('src/styles.css','utf8');
+css=css.replace('@import "tailwindcss";','* { box-sizing: border-box; } h1,h2,p { margin: 0; }').replace('@theme {',':root {');
+await writeFile('dist/arcade.css',css);
+await cp('arcade.html','dist/index.html');
+console.log('Arcade built: original sprites, route, rhythm and cabinet.');
