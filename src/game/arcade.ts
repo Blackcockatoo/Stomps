@@ -23,7 +23,7 @@ import type { ClipId, FX } from "./clips";
 import { SkinCache, type Frame } from "./skin";
 import type { BonusRun } from "./bonus";
 import { FULL_VIEW, type ViewSpan } from "./view";
-import { CRUISE_PX, auditRoute, type StreetSpec } from "./route";
+import { CRUISE_PX, auditRoute, type StreetQuality, type StreetSpec } from "./route";
 import { bakeWorld, type WorldArt } from "./scenery";
 import { loadSave, resetBests as clearBests, updateSave, clampOffset, type SaveData, type Skin } from "./storage";
 import { setKeyMap } from "./keys";
@@ -90,6 +90,9 @@ export class Arcade {
   pad = new GamepadInput();
   mode: Mode = "menu";
   runKind: RunKind = "free";
+  runSeed = 0;
+  private routeStarts = 0;
+  lastTechnique: { name: string; at: number } | null = null;
   pausedFrom: Mode = "strut";
   save: SaveData;
 
@@ -337,6 +340,7 @@ export class Arcade {
   playStrut(kind: RunKind = "free") {
     this.calTaps = null;
     this.runKind = kind;
+    this.runSeed = kind === "practice" ? 0 : this.routeStarts++ % 2;
     this.resetRound();
     this.scroll = 0;
     this.lap = 0;
@@ -502,6 +506,7 @@ export class Arcade {
     this.routeMaxChain = 0;
     this.meter = 0;
     this.streak = 0;
+    this.lastTechnique = null;
     this.seq = [];
     this.keys.clear();
     this.downAt.clear();
@@ -605,8 +610,9 @@ export class Arcade {
     street.flushStreet(this);
   }
 
-  settleStreet(spec: StreetSpec, key: string, dist: number, perfectPx: number) {
-    street.settleStreet(this, spec, key, dist, perfectPx);
+  settleStreet(spec: StreetSpec, key: string, dist: number, perfectPx: number,
+    quality: StreetQuality = "main", goodPx?: number) {
+    street.settleStreet(this, spec, key, dist, perfectPx, quality, goodPx);
   }
 
   leadStreet() {

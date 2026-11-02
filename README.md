@@ -18,6 +18,10 @@ Hold **A** to stride, tap **S** to stomp, use **D** for style. On phones, use th
 
 **Sound, sync & keys** (menu): volume and mute (also the SOUND toggle in the top bar), a tap-along that measures your audio/visual delay and offers a rhythm offset (SYNC −/+ still fine-tune it), and remappable keys. A **gamepad** (standard mapping) also works: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses. Screen readers get short announcements for judgements, combos and milestones through a polite live region.
 
+## P3.2 — Street Skills
+
+Street interactions now support a signposted move and learned alternatives. Matching named combos at an encounter earn a signature technique reward. Precisely delayed actions can earn a close-call reward on non-person objects. Repeated journeys vary some existing shop and pier interactions deterministically without changing their positions or cue windows, so all challenges remain learnable. No new art or controls.
+
 ## P3.1 — MOSS FLOW (skill foundation)
 
 Street encounters build a separate five-tier FLOW chain, from IN THE GROOVE to PAVEMENT ROYALTY. Each clean encounter advances the chain; a missed encounter halves it, drains 10% Quake Drive and briefly stumbles Moss. A beat-accurate move during a visible 1.8-second recovery window restores most, not all, of the lost momentum. Plain movement earns modest flourish points and cannot build FLOW. Confirmed encounters replace rather than double-pay their button scores. The live HUD displays FLOW, route results show peak FLOW, and Rhythm Royalty and the local save schema remain unaffected. New unit tests exercise the skill rules.

@@ -72,3 +72,10 @@ test('jumping ahead of unannounced street events never penalises the player', ()
   assert.equal(a.streetMiss,0);
   assert.equal(a.flowState.chain,0);
 });
+
+test('a missed encounter cannot invent FLOW when no chain was earned',()=>{
+  const missed=f.flowMiss(f.newFlow(),3);
+  const recovered=f.flowRecover(missed,3.5,'PERFECT');
+  assert.equal(recovered.chain,0);
+  assert.equal(recovered.level,0);
+});

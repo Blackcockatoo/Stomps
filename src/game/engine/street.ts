@@ -2,7 +2,7 @@
 import type { Arcade } from "../arcade";
 import { pointsFor } from "../feel";
 import { flowHit, flowMiss, flowMultiplier, flowName } from "./flow";
-import { ROUTE_PX, STREETS, isPrefix, sameTrigger, streetX, windowsFor, type StreetSpec } from "../route";
+import { ROUTE_PX, STREETS, streetForLap, streetPrefix, streetSolution, streetTechnique, streetX, windowsFor, type StreetQuality, type StreetSpec } from "../route";
 import { GROUND, MOSS_X } from "./types";
 import { BONUS_MULT, bonusViews, tickBonus, tickDoor } from "../bonus";
 
@@ -102,9 +102,10 @@ export function streetViews(g: Arcade) {
       if (lapK < 0) continue;
       const world = local + lapK * ROUTE_PX;
       const dist = world - moss;
-      const win = windowsFor(g.flow, spec);
+      const live = streetForLap(spec, lapK, g.runSeed);
+      const win = windowsFor(g.flow, live);
       if (dist > win.telegraph + 420 || dist < -win.good - 90) continue;
-      views.push({ spec, world, dist, key: `${spec.uid}:${lapK}`, win });
+      views.push({ spec: live, world, dist, key: `${spec.uid}:${lapK}`, win });
     }
   }
   return views;
@@ -121,7 +122,7 @@ export function scanStreets(g: Arcade) {
     const local = streetX(spec);
     for (const lapK of [lap - 1, lap, lap + 1]) {
       if (lapK < 0) continue;
-      scanOne(g, `${spec.uid}:${lapK}`, local + lapK * ROUTE_PX - moss, windowsFor(g.flow, spec));
+      scanOne(g, `${spec.uid}:${lapK}`, local + lapK * ROUTE_PX - moss, windowsFor(g.flow, streetForLap(spec, lapK, g.runSeed)));
     }
   }
 }
@@ -153,23 +154,43 @@ export function flushStreet(g: Arcade) {
   const btns = [...g.streetPending.keys()];
   const age = g.now - Math.min(...g.streetPending.values());
   const open = g.streetViews().filter((view) => !g.streetMarks.has(view.key));
+  // Completing a named combo at the encounter earns a special technique
+  // outcome. Ordinary presses have one signposted move and learned fallbacks.
+  const technique = g.lastTechnique && g.now - g.lastTechnique.at < 0.13
+    ? open.filter((view) => streetTechnique(view.spec, g.lastTechnique!.name) && Math.abs(view.dist) <= view.win.good)
+      .sort((a, b) => Math.abs(a.dist) - Math.abs(b.dist))[0]
+    : null;
+  if (technique) {
+    g.settleStreet(technique.spec, technique.key, technique.dist, technique.win.perfect, "technique", technique.win.good);
+    g.lastTechnique = null;
+    g.streetPending.clear();
+    return;
+  }
   const exact = open
-    .filter((view) => sameTrigger(view.spec, btns) && Math.abs(view.dist) <= view.win.good)
+    .map((view) => ({ ...view, solution: streetSolution(view.spec, btns) }))
+    .filter((view) => view.solution && Math.abs(view.dist) <= view.win.good)
     .sort((a, b) => Math.abs(a.dist) - Math.abs(b.dist))[0];
+  // A single-button fallback must not steal a valid two-button primary move.
+  // Give a potential chord 90ms to complete, regardless of button order.
+  const chordPending = open.some((view) => streetPrefix(view.spec, btns) && Math.abs(view.dist) <= view.win.good);
+  if (exact && chordPending && age < 0.09) return;
   if (exact) {
-    g.settleStreet(exact.spec, exact.key, exact.dist, exact.win.perfect);
+    g.settleStreet(exact.spec, exact.key, exact.dist, exact.win.perfect, exact.solution!, exact.win.good);
     g.streetPending.clear();
     return;
   }
   const waiting = open.some(
-    (view) => isPrefix(btns, view.spec.trigger) && view.dist < view.win.telegraph && view.dist > -view.win.good,
+    (view) => streetPrefix(view.spec, btns) && view.dist < view.win.telegraph && view.dist > -view.win.good,
   );
   if (waiting && age < 0.09) return;
   g.streetPending.clear();
 }
 
-export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: number, perfectPx: number) {
+export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: number, perfectPx: number,
+  quality: StreetQuality = "main", goodPx = perfectPx * 1.85) {
   const kind = Math.abs(dist) <= perfectPx ? "perfect" : "good";
+  // A controlled late dodge is a close call, not a random payout for misses.
+  const closeCall = !spec.body && dist < -perfectPx && Math.abs(dist) >= goodPx * 0.8 && Math.abs(dist) <= goodPx;
   g.refundRecent(); // A button and its street encounter must never pay twice.
   const previousLevel = g.flowState.level;
   g.flowState = flowHit(g.flowState);
@@ -178,11 +199,14 @@ export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: num
   else g.streetGood += 1;
   const variety = [1, 1.1, 1.4, 1.8][Math.min(3, new Set(g.recent).size)] ?? 1;
   const mult = g.bonus ? BONUS_MULT : 1;
-  const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult * flowMultiplier(g.flowState));
+  const execution = quality === "technique" ? 1.5 : quality === "alternative" ? 0.72 : 1;
+  const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult *
+    flowMultiplier(g.flowState) * execution * (closeCall ? 1.35 : 1));
   g.score += points;
   if (!g.bonus) g.lapHits += 1;
   g.meter = Math.min(1, g.meter + (kind === "perfect" ? 0.07 : 0.04));
-  g.callout = g.flowState.level > previousLevel ? flowName(g.flowState.level) : mult > 1 ? `${spec.feedback} ×${mult}` : spec.feedback;
+  g.callout = closeCall ? "CLOSE CALL!" : quality === "technique" ? "SIGNATURE TECHNIQUE!" :
+    g.flowState.level > previousLevel ? flowName(g.flowState.level) : mult > 1 ? `${spec.feedback} ×${mult}` : spec.feedback;
   g.announce(`${kind === "perfect" ? "Perfect" : "Good"}: ${spec.feedback.toLowerCase()}${mult > 1 ? `, times ${mult}` : ""}`);
   g.calloutLife = 1.05;
   g.popups.push({
@@ -192,8 +216,12 @@ export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: num
     y: GROUND - 108,
     gold: kind === "perfect",
   });
-  if (kind === "perfect") g.groove.perfect();
+  if (kind === "perfect" || closeCall || quality === "technique") g.groove.perfect();
   else g.groove.combo();
+  if (closeCall || quality === "technique") {
+    g.burst("sparks", g.mossX() + 12, GROUND - 56);
+    g.shake = Math.max(g.shake, 0.13);
+  }
   if (spec.id === "seagull") {
     g.birds.forEach((bird) => {
       bird.scare = 0.75;

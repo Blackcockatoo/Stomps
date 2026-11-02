@@ -84,6 +84,7 @@ export function commitSingle(g: Arcade, btn: Btn) {
   if (found) {
     g.seq = [];
     g.hooks.onPractice?.(found.name);
+    g.lastTechnique = { name: found.name, at: g.now };
     g.refundRecent();
     g.play(found.steps);
     if (found.name === "HEEL-TOE HAMMER" || found.name === "DOUBLE TROUBLE" || found.name === "FRANKSTON SHUFFLE") {

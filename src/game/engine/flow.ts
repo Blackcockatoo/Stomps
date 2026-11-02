@@ -22,7 +22,7 @@ export function flowHit(state: FlowState): FlowState {
 export function flowMiss(state: FlowState, now: number): FlowState {
   const chain = Math.floor(state.chain / 2);
   return { ...state, chain, level: flowLevel(chain),
-    recoverTo: Math.max(1, state.chain - 2), recoveryReadyAt: now + RECOVERY_DELAY,
+    recoverTo: Math.max(0, state.chain - 2), recoveryReadyAt: now + RECOVERY_DELAY,
     recoveryUntil: now + RECOVERY_WINDOW };
 }
 export function canRecover(state: FlowState, now: number, judgement: string): boolean {
