@@ -90,6 +90,9 @@ export class Arcade {
   pad = new GamepadInput();
   mode: Mode = "menu";
   runKind: RunKind = "free";
+  runSeed = 0;
+  private routeStarts = 0;
+  lastTechnique: { name: string; at: number } | null = null;
   pausedFrom: Mode = "strut";
   save: SaveData;
 
@@ -337,6 +340,7 @@ export class Arcade {
   playStrut(kind: RunKind = "free") {
     this.calTaps = null;
     this.runKind = kind;
+    this.runSeed = kind === "practice" ? 0 : this.routeStarts++ % 2;
     this.resetRound();
     this.scroll = 0;
     this.lap = 0;
@@ -502,6 +506,7 @@ export class Arcade {
     this.routeMaxChain = 0;
     this.meter = 0;
     this.streak = 0;
+    this.lastTechnique = null;
     this.seq = [];
     this.keys.clear();
     this.downAt.clear();

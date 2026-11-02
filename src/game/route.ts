@@ -287,6 +287,57 @@ export function sameTrigger(spec: StreetSpec, btns: Btn[]) {
   return want === triggerKey(btns);
 }
 
+
+/**
+ * A street challenge offers one signposted move and a small selection of
+ * learnable alternative solutions. Human interactions never require a stomp.
+ * Combo techniques are distinct from ordinary double-button alternatives.
+ */
+export type StreetQuality = "main" | "alternative" | "technique";
+type StreetOption = { alternatives: Btn[][]; techniques: string[] };
+export const STREET_OPTIONS: Partial<Record<StreetId, StreetOption>> = {
+  crossing_signal: { alternatives: [["A", "C"]], techniques: ["HEEL-TOE HAMMER"] },
+  sleeping_blanket: { alternatives: [["C"]], techniques: ["ROYAL SWAGGER"] },
+  vape_cloud: { alternatives: [["A"]], techniques: ["ROYAL SWAGGER"] },
+  commuter: { alternatives: [["C"]], techniques: ["ROYAL SWAGGER"] },
+  busker: { alternatives: [["C"]], techniques: ["STREET CORONATION"] },
+  puddle: { alternatives: [["C"]], techniques: ["FRANKSTON SHUFFLE"] },
+  newspaper: { alternatives: [["A"]], techniques: ["ROYAL SWAGGER"] },
+  skateboard: { alternatives: [["A"]], techniques: ["FRANKSTON SHUFFLE", "ROYAL SWAGGER"] },
+  bin: { alternatives: [["A", "C"]], techniques: ["STREET CORONATION"] },
+  trolley: { alternatives: [["A"]], techniques: ["HEEL-TOE HAMMER"] },
+  seagull: { alternatives: [["C"]], techniques: ["DOUBLE TROUBLE"] },
+  streetlight: { alternatives: [["A", "C"]], techniques: ["ROYAL SWAGGER"] },
+};
+export function streetSolution(spec: StreetSpec, btns: Btn[]): StreetQuality | null {
+  if (sameTrigger(spec, btns)) return "main";
+  return STREET_OPTIONS[spec.id]?.alternatives.some((combo) => triggerKey(combo) === triggerKey(btns)) ? "alternative" : null;
+}
+export function streetPrefix(spec: StreetSpec, btns: Btn[]): boolean {
+  return [spec.trigger, ...(STREET_OPTIONS[spec.id]?.alternatives ?? [])].some((keys) => isPrefix(btns, keys));
+}
+export function streetTechnique(spec: StreetSpec, name: string): boolean {
+  return (STREET_OPTIONS[spec.id]?.techniques ?? []).includes(name);
+}
+
+/**
+ * Reprise laps/runs rearrange only pre-authored, same-body interactions.
+ * It is deterministic and doesn't alter positions, cue windows or safety.
+ * The first route is canonical. No randomness, server or saved seed required.
+ */
+const ENCORE: Partial<Record<StreetId, StreetId>> = {
+  puddle: "newspaper", newspaper: "puddle",
+  skateboard: "trolley", trolley: "skateboard",
+  seagull: "streetlight", streetlight: "seagull",
+};
+export function streetForLap(spec: StreetSpec, lap: number, runSeed = 0): StreetSpec {
+  if ((lap + runSeed) % 2 === 0) return spec;
+  const alt = ENCORE[spec.id];
+  if (!alt) return spec;
+  const template = STREETS.find((candidate) => candidate.id === alt && candidate.body === spec.body);
+  return template ? { ...template, uid: spec.uid, zone: spec.zone, at: spec.at } : spec;
+}
+
 export function isPrefix(btns: Btn[], trigger: Btn[]) {
   if (btns.length >= trigger.length) return false;
   const have = new Set(btns);
