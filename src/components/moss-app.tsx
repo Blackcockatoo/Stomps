@@ -212,8 +212,8 @@ export function MossApp() {
   return (
     <div className={`shell mode-${mode} scene-${scene}`}>
       <header className="cabinet-header"><span><b>B$S</b> / MOSS STOMPER</span><span className="signal">● NEON STRUT / HYPER DRIVE</span></header>
-      {playing ? <section className={`live-hud ${hud.meter >= 1 ? "charged" : ""}`} aria-label="Live score and style">
-        <div className="score-block"><span className="hud-label">TOTAL RESPECT</span><strong>{hud.score.toLocaleString()}</strong></div>
+      {playing ? <section className={`live-hud ${hud.meter >= 1 ? "charged" : ""} ${hud.bonus ? "bonus" : ""}`} aria-label="Live score and style">
+        <div className="score-block"><span className="hud-label">TOTAL RESPECT{hud.bonus ? <b className="bonus-badge">BONUS ×2</b> : null}</span><strong>{hud.score.toLocaleString()}</strong></div>
         <div className="rank-block"><span className="hud-label">STREET STATUS</span><strong>{styleRank(hud.streak)}</strong></div>
         <div className="chain-block"><span className="hud-label">ON BEAT</span><strong>×{hud.streak}</strong></div>
         <button type="button" className="style-block" disabled={hud.meter < 1 || mode === "pause"} onClick={() => arcadeRef.current?.unleash()} aria-label={hud.meter >= 1 ? "Unleash Mossquake" : "Build style to unlock Mossquake"}>
@@ -338,7 +338,7 @@ export function MossApp() {
               </h2>
               <div className="result-detail">
                 <strong>{result.newRecord ? "PERSONAL BEST / " : ""}{result.perfect + result.fresh === 0 ? "FIND YOUR FEET" : result.stumble === 0 ? "CLEAN FOOTWORK" : "KEEP YOUR FLOW"}</strong>
-                <p>{result.kind === "route" ? `${result.perfect} perfect encounters · ${result.fresh} clean · ${result.stumble} missed. Home in ${Math.floor((result.seconds ?? 0) / 60)}m ${Math.floor((result.seconds ?? 0) % 60)}s.` : "Hit notes as they reach the line. Keep long notes held until their tail clears."}</p>
+                <p>{result.kind === "route" ? `${result.perfect} perfect encounters · ${result.fresh} clean · ${result.stumble} missed.${result.bonus ? ` ${result.bonus} bonus world${result.bonus > 1 ? "s" : ""} cleared.` : ""} Home in ${Math.floor((result.seconds ?? 0) / 60)}m ${Math.floor((result.seconds ?? 0) % 60)}s.` : "Hit notes as they reach the line. Keep long notes held until their tail clears."}</p>
                 <small>{result.stumble ? "Next run: watch the cue, then plant the action as it reaches you." : "Next run: link your signature moves between the cues."}</small>
               </div>
               <div className="menu-actions">

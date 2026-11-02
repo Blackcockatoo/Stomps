@@ -2,10 +2,11 @@
 import type { Arcade } from "../arcade";
 import { ROUTE_PX, gradeAt, triggerLabel, zoneSample } from "../route";
 import { cycleOf } from "../scenery";
+import { BONUS_MULT } from "../bonus";
 import { GROUND, H, MOSS_X, W } from "./types";
 
 export function drawHud(g: Arcade) {
-  const sample = zoneSample(g.scroll + (g.mode === "menu" ? 240 : MOSS_X));
+  const sample = zoneSample(g.routeScroll() + (g.mode === "menu" ? 240 : MOSS_X));
   const phase = gradeAt(cycleOf(g.now)).phase.toUpperCase();
   if (g.mode === "menu") {
     ctxLabel(g.ctx2d, `${sample.zone.name} · ${phase}`, 12, 22, "#f5c518", 8);
@@ -16,9 +17,10 @@ export function drawHud(g: Arcade) {
   if (g.mode === "strut") {
     const lead = g.runKind === "practice" ? null : g.leadStreet();
     ctx.fillStyle = "#b7a89a";
-    ctx.fillText(`${sample.zone.name}  ${phase}`, 12, H - 12);
+    ctx.fillStyle = g.bonus ? "#ff3ea5" : "#b7a89a";
+    ctx.fillText(g.bonus ? `BONUS WORLD ×${BONUS_MULT}  ${phase}` : `${sample.zone.name}  ${phase}`, 12, H - 12);
     if (g.runKind === "route") {
-      const progress = Math.min(1, (g.scroll + MOSS_X) / ROUTE_PX);
+      const progress = Math.min(1, (g.routeScroll() + MOSS_X) / ROUTE_PX);
       ctx.fillStyle = "#192231"; ctx.fillRect(12, H - 27, W - 24, 3);
       ctx.fillStyle = "#f5c518"; ctx.fillRect(12, H - 27, (W - 24) * progress, 3);
       ctx.textAlign = "right"; ctx.fillText(`${Math.floor(g.now / 60)}:${String(Math.floor(g.now % 60)).padStart(2, "0")} / ${Math.floor(progress * 100)}% HOME`, W - 12, H - 12); ctx.textAlign = "left";
@@ -119,6 +121,6 @@ export function emitHud(g: Arcade, dt: number) {
   g.hudClock += dt;
   if (g.hudClock >= 1 / 30) {
     g.hudClock = 0;
-    g.hooks.onHud?.({ score: Math.round(g.displayScore), meter: g.meter, streak: g.streak, gain: g.rewardLife > 0 ? g.gain : 0, serial: g.gainSerial, label: g.callout });
+    g.hooks.onHud?.({ score: Math.round(g.displayScore), meter: g.meter, streak: g.streak, gain: g.rewardLife > 0 ? g.gain : 0, serial: g.gainSerial, label: g.callout, bonus: !!g.bonus });
   }
 }

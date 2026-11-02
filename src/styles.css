@@ -467,3 +467,7 @@ body > div { height: 100%; }
 .chooser .menu-actions { grid-template-columns: 1fr; }
 .chooser .cab-btn { min-height: 56px; text-align: left; }
 .cab-btn[aria-pressed="true"] { border-color: var(--color-stride); color: var(--color-stride); }
+.bonus-badge { margin-left: 8px; padding: 1px 5px; background: #ff3ea5; color: #080d12; font-size: 0.85em; letter-spacing: 0.08em; animation: bonus-pulse 0.6s ease-in-out infinite alternate; }
+.live-hud.bonus .score-block strong { color: #ff3ea5; }
+@keyframes bonus-pulse { from { opacity: 0.7; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bonus-badge { animation: none; } }

@@ -455,3 +455,81 @@ function hash(n: number) {
 export function cycleOf(now: number) {
   return mod(now / CYCLE_SEC, 1);
 }
+
+// ── Bonus world ──────────────────────────────────────────────────────────
+
+const BONUS_W = 480;
+
+/** Neon backdrop for the bonus-world segment: night sky, sun bands, pillars, grid floor. */
+export function paintBonusWorld(ctx: Ctx, scroll: number, now: number) {
+  const sky = ctx.createLinearGradient(0, 0, 0, 196);
+  sky.addColorStop(0, "#090418");
+  sky.addColorStop(0.7, "#2a0b3d");
+  sky.addColorStop(1, "#5a1450");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, BONUS_W, 196);
+  // Banded sun.
+  ctx.save();
+  ctx.fillStyle = "#f5c518";
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.arc(BONUS_W / 2, 150, 54, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = "#2a0b3d";
+  for (let i = 0; i < 6; i += 1) ctx.fillRect(BONUS_W / 2 - 60, 108 + i * 7, 120, 1 + i * 0.6);
+  ctx.restore();
+  // Parallax neon pillars.
+  const pulse = 0.55 + 0.45 * Math.sin(now * 6);
+  for (let i = -1; i < 7; i += 1) {
+    const x = Math.round(i * 90 - ((scroll * 0.5) % 90));
+    r(ctx, x, 70, 10, 126, "#14081f");
+    ctx.fillStyle = i % 2 ? `rgba(255,62,165,${0.5 + 0.4 * pulse})` : `rgba(64,224,255,${0.5 + 0.4 * pulse})`;
+    ctx.fillRect(x + 4, 74, 2, 118);
+  }
+  // Grid floor.
+  r(ctx, 0, 196, BONUS_W, 74, "#120720");
+  ctx.strokeStyle = "rgba(255,62,165,0.65)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let y = 196, step = 3; y < 270; y += step, step += 2) {
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(BONUS_W, y + 0.5);
+  }
+  const off = scroll % 40;
+  for (let x = -400; x < BONUS_W + 400; x += 40) {
+    const top = x - off;
+    ctx.moveTo(BONUS_W / 2 + (top - BONUS_W / 2) * 0.25, 196);
+    ctx.lineTo(BONUS_W / 2 + (top - BONUS_W / 2) * 2.2, 270);
+  }
+  ctx.stroke();
+  r(ctx, 0, 195, BONUS_W, 2, "#40e0ff");
+}
+
+/** The bonus door prop on the pier: a lit arch when open, boarded when shut. */
+export function paintDoor(ctx: Ctx, x: number, ground: number, open: boolean, now: number) {
+  const left = Math.round(x - 20);
+  const top = ground - 86;
+  r(ctx, left - 4, top - 6, 48, 92, "#1a1220");
+  if (open) {
+    const pulse = 0.6 + 0.4 * Math.sin(now * 8);
+    ctx.save();
+    ctx.globalAlpha = 0.35 * pulse;
+    r(ctx, left - 14, top - 16, 68, 112, "#ff3ea5");
+    ctx.restore();
+    const glow = ctx.createLinearGradient(0, top, 0, ground);
+    glow.addColorStop(0, "#40e0ff");
+    glow.addColorStop(1, "#ff3ea5");
+    ctx.fillStyle = glow;
+    ctx.fillRect(left, top, 40, 86);
+    r(ctx, left + 6, top + 6, 28, 74, `rgba(255,255,255,${0.25 + 0.25 * pulse})`);
+  } else {
+    r(ctx, left, top, 40, 86, "#3a2a22");
+    for (let i = 0; i < 4; i += 1) r(ctx, left - 2, top + 10 + i * 20, 44, 5, "#6b4a32");
+  }
+  r(ctx, left - 6, top - 14, 52, 9, open ? "#f5c518" : "#4a4048");
+  ctx.fillStyle = open ? "#080d12" : "#b7a89a";
+  ctx.font = "bold 7px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(open ? "BONUS ×2" : "BONUS", left + 20, top - 7);
+  ctx.textAlign = "left";
+}

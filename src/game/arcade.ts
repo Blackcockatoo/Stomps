@@ -20,6 +20,7 @@ import type { Btn } from "./arcade-types";
 import { CHART_END_BEAT, buildChart, isDifficulty, type Difficulty } from "./chart";
 import type { ClipId, FX } from "./clips";
 import { SkinCache, type Frame } from "./skin";
+import type { BonusRun } from "./bonus";
 import { CRUISE_PX, auditRoute, type StreetSpec } from "./route";
 import { bakeWorld, type WorldArt } from "./scenery";
 import { loadSave, resetBests as clearBests, updateSave, clampOffset, type SaveData, type Skin } from "./storage";
@@ -148,6 +149,15 @@ export class Arcade {
   streetCued = new Set<string>();
   flow = CRUISE_PX;
   lap = 0;
+  /** Street hits landed this lap (opens the bonus door at DOOR_HITS). */
+  lapHits = 0;
+  /** Active bonus-world segment, if Moss went through the door. */
+  bonus: BonusRun | null = null;
+  bonusSerial = 0;
+  bonusCleared = 0;
+  /** Laps whose door has been passed (entered or shut) / announced. */
+  doorDone = new Set<number>();
+  doorHinted = new Set<number>();
   streetPerfect = 0;
   streetGood = 0;
   streetMiss = 0;
@@ -322,6 +332,11 @@ export class Arcade {
     this.resetRound();
     this.scroll = 0;
     this.lap = 0;
+    this.lapHits = 0;
+    this.bonus = null;
+    this.bonusCleared = 0;
+    this.doorDone.clear();
+    this.doorHinted.clear();
     this.flow = CRUISE_PX;
     this.streetMarks.clear();
     this.streetCued.clear();
@@ -558,6 +573,11 @@ export class Arcade {
 
   mossWorld() {
     return street.mossWorld(this);
+  }
+
+  /** Scroll on the route itself: frozen at the door while in the bonus world. */
+  routeScroll() {
+    return this.bonus ? this.bonus.returnScroll : this.scroll;
   }
 
   streetViews() {
