@@ -3,7 +3,7 @@ import type { Arcade } from "../arcade";
 import { CELL, PLAY_CLIPS, STAGE } from "../clips";
 import { gradeAt, plateWeight } from "../route";
 import { cycleOf, paintBackdrop, paintBonusWorld, paintDoor, paintGlow, paintMarks, paintPips, paintProp, paintStreet } from "../scenery";
-import { DOOR_HINT_PX, doorOpen, doorWorld } from "../bonus";
+import { DOOR_HINT_PX, doorOpen, doorWorld, pierCrown, GOLDEN_MULT } from "../bonus";
 import { GROUND, H, W } from "./types";
 
 export function draw(g: Arcade) {
@@ -83,6 +83,10 @@ export function drawWorld(g: Arcade, front: boolean) {
   if (g.bonus) {
     if (!front) {
       paintBonusWorld(ctx, g.scroll, g.now);
+      if (g.bonus.multiplier === GOLDEN_MULT) {
+        ctx.fillStyle = "rgba(255, 205, 50, 0.10)";
+        ctx.fillRect(0, 0, W, H);
+      }
       ctx.fillStyle = "rgba(0,0,0,0.35)";
       ctx.beginPath();
       ctx.ellipse(g.mossX(), GROUND + 3, 28, 5, 0, 0, Math.PI * 2);
@@ -159,13 +163,14 @@ function drawDoor(g: Arcade) {
     if (lapK < 0) continue;
     const screen = doorWorld(lapK) - g.scroll;
     if (screen < -60 || screen > W + 60) continue;
-    const open = !g.doorDone.has(lapK) && doorOpen(g.meter, g.lapHits);
+    const golden = pierCrown(g.pierPerfect, g.pierMiss);
+    const open = !g.doorDone.has(lapK) && (doorOpen(g.meter, g.lapHits) || golden);
     paintDoor(g.ctx2d, screen, GROUND, open, g.now);
     if (open && screen - g.mossX() < DOOR_HINT_PX && screen > g.mossX()) {
       g.ctx2d.fillStyle = "#f5c518";
       g.ctx2d.font = "bold 8px monospace";
       g.ctx2d.textAlign = "center";
-      g.ctx2d.fillText("STRUT IN", screen, GROUND - 112);
+      g.ctx2d.fillText(golden ? "GOLDEN DOOR ×3" : "STRUT IN", screen, GROUND - 112);
       g.ctx2d.textAlign = "left";
     }
   }
