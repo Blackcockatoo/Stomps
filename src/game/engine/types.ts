@@ -21,6 +21,7 @@ export type ResultStats = {
   late: number;
   stumble: number;
   maxCombo: number;
+  flowPeak?: number;
 };
 
 export type Step = {
@@ -42,7 +43,8 @@ export type StreetMark = { kind: "perfect" | "good" | "miss"; at: number };
 export type Trail = { img: HTMLImageElement | HTMLCanvasElement; x: number; y: number; flip: boolean; life: number };
 export type Mote = { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean };
 
-export type LiveHud = { score: number; meter: number; streak: number; gain: number; serial: number; label: string; bonus?: boolean };
+export type LiveHud = { score: number; meter: number; streak: number; gain: number; serial: number; label: string; bonus?: boolean;
+  flowLevel?: number; flowChain?: number; recovering?: boolean };
 export type Best = { strut: number; rhythm: number };
 
 export type Hooks = {

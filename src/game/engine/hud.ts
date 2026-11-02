@@ -35,6 +35,13 @@ export function drawHud(g: Arcade) {
       ctx.textAlign = "left";
     }
   }
+  if (g.mode === "strut" && g.flowState.recoveryUntil > g.now) {
+    const remaining = (g.flowState.recoveryUntil - g.now) / 1.8;
+    ctx.fillStyle = "#f5c518"; ctx.font = "bold 9px monospace";
+    ctx.fillText("RECOVER ON THE BEAT", L, 64);
+    ctx.fillStyle = "#273548"; ctx.fillRect(L, 69, R - L, 3);
+    ctx.fillStyle = "#f5c518"; ctx.fillRect(L, 69, (R - L) * remaining, 3);
+  }
   if (g.calloutLife > 0) {
     ctx.fillStyle = "#f5c518";
     ctx.font = "11px 'Press Start 2P', monospace";
@@ -129,6 +136,9 @@ export function emitHud(g: Arcade, dt: number) {
   g.hudClock += dt;
   if (g.hudClock >= 1 / 30) {
     g.hudClock = 0;
-    g.hooks.onHud?.({ score: Math.round(g.displayScore), meter: g.meter, streak: g.streak, gain: g.rewardLife > 0 ? g.gain : 0, serial: g.gainSerial, label: g.callout, bonus: !!g.bonus });
+    g.hooks.onHud?.({ score: Math.round(g.displayScore), meter: g.meter, streak: g.streak,
+      gain: g.rewardLife > 0 ? g.gain : 0, serial: g.gainSerial, label: g.callout, bonus: !!g.bonus,
+      flowLevel: g.flowState.level, flowChain: g.flowState.chain,
+      recovering: g.mode === "strut" && g.flowState.recoveryUntil > g.now });
   }
 }

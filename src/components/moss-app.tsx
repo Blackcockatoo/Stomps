@@ -1,4 +1,5 @@
 import { styleRank } from "@/game/feel";
+import { flowName } from "@/game/engine/flow";
 import { useEffect, useRef, useState } from "react";
 import { positionX, visibleSpan } from "@/game/view";
 import { Arcade, COMBOS, CALIBRATION_MIN_TAPS, CALIBRATION_WARMUP, type Btn, type Calibration, type Mode, type ResultStats, type LiveHud } from "@/game/arcade";
@@ -233,8 +234,8 @@ export function MossApp() {
       <header className="cabinet-header"><span><b>B$S</b> / MOSS STOMPER</span><span className="signal">● NEON STRUT / HYPER DRIVE</span></header>
       {playing ? <section className={`live-hud ${hud.meter >= 1 ? "charged" : ""} ${hud.bonus ? "bonus" : ""}`} aria-label="Live score and style">
         <div className="score-block"><span className="hud-label">TOTAL RESPECT{hud.bonus ? <b className="bonus-badge">BONUS ×2</b> : null}</span><strong>{hud.score.toLocaleString()}</strong></div>
-        <div className="rank-block"><span className="hud-label">STREET STATUS</span><strong>{styleRank(hud.streak)}</strong></div>
-        <div className="chain-block"><span className="hud-label">ON BEAT</span><strong>×{hud.streak}</strong></div>
+        <div className="rank-block"><span className="hud-label">{mode === "strut" ? "STREET FLOW" : "STREET STATUS"}</span><strong>{mode === "strut" ? (hud.recovering ? "RECOVER ON BEAT" : flowName(hud.flowLevel ?? 0)) : styleRank(hud.streak)}</strong></div>
+        <div className="chain-block"><span className="hud-label">{mode === "strut" ? "FLOW CHAIN" : "ON BEAT"}</span><strong>×{mode === "strut" ? (hud.flowChain ?? 0) : hud.streak}</strong></div>
         <button type="button" className="style-block" disabled={hud.meter < 1 || mode === "pause"} onClick={() => arcadeRef.current?.unleash()} aria-label={hud.meter >= 1 ? "Unleash Mossquake" : "Build style to unlock Mossquake"}>
           <div className="meter-caption"><span>{hud.meter >= 1 ? "MOSSQUAKE / TAP TO UNLEASH" : "QUAKE DRIVE / CHARGE YOUR STYLE"}</span><b>{Math.round(hud.meter*100)}<small>%</small></b></div>
           <div className="style-track" role="progressbar" aria-label="Quake drive" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(hud.meter*100)}><div className="meter-fill" style={{transform:`scaleX(${hud.meter})`}} /><div className="meter-grid" /></div>
@@ -352,7 +353,7 @@ export function MossApp() {
                 {result.kind === "route" ? "HOME IN STYLE" : `ROYALTY / ${DIFFICULTY_INFO[result.difficulty ?? difficulty].label}`}
                 <em>
                   {result.score} · perfect {result.perfect} · fresh {result.fresh} · late {result.late} · stumbled{" "}
-                  {result.stumble} · chain {result.maxCombo}
+                  {result.stumble} · chain {result.maxCombo}{result.kind === "route" ? ` · FLOW ${result.flowPeak ?? 0}/5` : ""}
                 </em>
               </h2>
               <div className="result-detail">
