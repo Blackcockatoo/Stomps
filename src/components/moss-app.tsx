@@ -1,5 +1,6 @@
 import { styleRank } from "@/game/feel";
 import { useEffect, useRef, useState } from "react";
+import { positionX, visibleSpan } from "@/game/view";
 import { Arcade, COMBOS, CALIBRATION_MIN_TAPS, CALIBRATION_WARMUP, type Btn, type Calibration, type Mode, type ResultStats, type LiveHud } from "@/game/arcade";
 import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, type ClipInfo } from "@/game/clips";
 import { ROUTE_CARDS } from "@/game/route";
@@ -22,6 +23,7 @@ const PADS: { id: Btn; name: string; idle: string; down: string; cls: string }[]
 
 export function MossApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const measureRef = useRef<() => void>(() => {});
   const arcadeRef = useRef<Arcade | null>(null);
   const [hud, setHud] = useState<LiveHud>({score:0,meter:0,streak:0,gain:0,serial:0,label:""});
   const [mode, setMode] = useState<Mode>("menu");
@@ -85,6 +87,16 @@ export function MossApp() {
       onCalTap: (count) => onCalTap(count),
     });
     arcadeRef.current = arcade;
+    const measure = () => {
+      const style = getComputedStyle(canvas);
+      const box = canvas.getBoundingClientRect();
+      const scale = Math.max(box.width / 480, box.height / 270);
+      const overflow = Math.max(0, 480 * scale - box.width);
+      arcade.setView(visibleSpan(box.width, box.height, style.objectFit, positionX(style.objectPosition, overflow)));
+    };
+    measureRef.current = measure;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(canvas);
     setAudio({ ...arcade.save.audio });
     setKeymap({ ...arcade.save.keys });
     setOffset(arcade.audioOffset);
@@ -140,6 +152,7 @@ export function MossApp() {
     window.addEventListener("keyup", onKey);
     window.addEventListener("blur", release);
     return () => {
+      observer?.disconnect();
       window.clearTimeout(announceRef.current.timer);
       arcade.destroy();
       document.removeEventListener("visibilitychange", onVisibility);
@@ -148,6 +161,12 @@ export function MossApp() {
       window.removeEventListener("blur", release);
     };
   }, []);
+
+  // Layout (and so the visible slice of the playfield) changes with the mode classes.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => measureRef.current());
+    return () => cancelAnimationFrame(frame);
+  }, [mode, scene]);
 
   const playing = mode === "strut" || mode === "rhythm" || mode === "pause";
   const loadPct = progress.total ? Math.floor((progress.done / progress.total) * 100) : 0;

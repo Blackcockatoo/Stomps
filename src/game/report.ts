@@ -3,7 +3,7 @@ export const REPORT = {
     "V0.4 is an asset pack, not a game. The cleaned 12-frame strut was cropped and torn, so it stays in the lab only.",
     "V0.6 is a route, lighting, and street-event schema. Its 640×360 layers are blockouts and its props are silhouettes, so they are not the playfield.",
     "Usable originals still in the cabinet: button faces, rhythm notes, foreshore plates, and the dust, impact, spin, and spark strips.",
-    "No audio files were in either pack. The groove is still an original 104 BPM synth.",
+    "No audio files were in either pack. The groove is an original 104 BPM synth unless an original or licensed track is dropped at public/audio/neon-strut.ogg (or .mp3).",
   ],
   inspection: [
     "The strut already shared one foot line. The world did not: one sunset foreshore, no route, and no fail-soft events.",
@@ -20,12 +20,17 @@ export const REPORT = {
   limits: [
     "Zone buildings are engine-drawn pixel scenery, not the unfinished V0.6 blockouts and not a hand-painted mile of Frankston.",
     "The foreshore plates now only frame the pier approach. The pier itself is engine-drawn: deck boards over open water, pilings, a back rail and lamps. No zone has a hand-painted bay of its own yet.",
-    "There is still no cream-hoodie skin, no recorded soundtrack, and no bonus-world door. This pass was not tapped on a physical phone.",
+    "The cream hoodie is a runtime recolour of the red hoodie pixels, not new art, so shading follows the original red frames.",
+    "No recorded soundtrack ships. The cabinet plays one only if a 104 BPM file with its downbeat at 0s is dropped into public/audio; otherwise it is the synth.",
+    "The bonus-world door is engine-drawn neon on the existing props: one ×2 segment per lap, opened by a full Quake Drive or eight hits, then back to the pier.",
+    "Phone layout was checked at phone viewports in the browser (390×844, 360×740 and landscape), not tapped on a physical handset.",
   ],
   tests: [
     "Route audit: event gaps stay wider than a sprint telegraph plus a good window.",
     "Street Strut leaves the van on the shared pavement. A crossing stomp on the beat scores ON THE BEAT. A+D on the skateboard scores SIDEWINDER. Heel-Toe Hammer still returns to the strut.",
     "Passing a station event without its button adds a miss, does not take points, and does not play the stumble.",
     "Heel-Toe Hammer still fires. Landscape and portrait were checked in the browser, not on a handset.",
+    "Bonus door: opens on a full meter or eight hits, scores ×2 inside, and returns to the pier. The cream skin keeps skin, jacket and sneakers untouched.",
+    "Browser smoke at 390×844 and 360×740: no sideways scroll, pads at least 44px and clear of the HUD, and the canvas HUD drawn inside the cropped portrait playfield.",
   ],
 };

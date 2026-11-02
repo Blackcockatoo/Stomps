@@ -21,6 +21,7 @@ import { CHART_END_BEAT, buildChart, isDifficulty, type Difficulty } from "./cha
 import type { ClipId, FX } from "./clips";
 import { SkinCache, type Frame } from "./skin";
 import type { BonusRun } from "./bonus";
+import { FULL_VIEW, type ViewSpan } from "./view";
 import { CRUISE_PX, auditRoute, type StreetSpec } from "./route";
 import { bakeWorld, type WorldArt } from "./scenery";
 import { loadSave, resetBests as clearBests, updateSave, clampOffset, type SaveData, type Skin } from "./storage";
@@ -151,6 +152,8 @@ export class Arcade {
   lap = 0;
   /** Street hits landed this lap (opens the bonus door at DOOR_HITS). */
   lapHits = 0;
+  /** On-screen slice of the playfield (portrait phones crop the sides). */
+  view: ViewSpan = FULL_VIEW;
   /** Active bonus-world segment, if Moss went through the door. */
   bonus: BonusRun | null = null;
   bonusSerial = 0;
@@ -576,6 +579,10 @@ export class Arcade {
 
   mossWorld() {
     return street.mossWorld(this);
+  }
+
+  setView(view: ViewSpan) {
+    this.view = view;
   }
 
   /** Scroll on the route itself: frozen at the door while in the bonus world. */

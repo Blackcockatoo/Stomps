@@ -38,6 +38,8 @@ buildSync({
       "export * as skin from './src/game/skin';",
       "export * as bonus from './src/game/bonus';",
       "export * as audio from './src/game/audio';",
+      "export * as report from './src/game/report';",
+      "export * as view from './src/game/view';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',

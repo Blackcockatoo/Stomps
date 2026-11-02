@@ -87,7 +87,8 @@ body > div { height: 100%; }
   height: 100dvh;
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr) auto;
-  padding: 0 max(0px, env(safe-area-inset-right)) 0 max(0px, env(safe-area-inset-left));
+  /* viewport-fit=cover: keep clear of notches, the status bar (standalone PWA) and the home indicator. */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
   background: var(--color-bg);
   color: var(--color-fg);
   touch-action: none;
@@ -366,7 +367,7 @@ body > div { height: 100%; }
   .pad img { width: 36px; height: 36px; }
   .pad span { font-size: 8px; }
   .sync { grid-column: auto; flex-direction: column; }
-  .sync .cab-btn { padding: 4px; min-height: 32px; font-size: 8px; }
+  .sync .cab-btn { padding: 4px; min-height: 44px; font-size: 8px; }
   .overlay { left: 12px; bottom: 10px; padding: 12px; width: 310px; max-height: calc(100% - 20px); }
   .brand { font-size: 22px; }
   .brand em,
@@ -374,7 +375,7 @@ body > div { height: 100%; }
   .eyebrow { font-size: 7px; margin-bottom: 6px; }
   .hint-row { font-size: 9px; margin-top: 6px; }
   .menu-actions { margin-top: 8px; gap: 4px; }
-  .cab-btn { min-height: 36px; padding: 7px; font-size: 8px; }
+  .cab-btn { min-height: 44px; padding: 7px; font-size: 8px; }
   .live-hud { grid-column: 1/-1; margin: 0 12px; gap: 4px 16px; padding: 3px 0; grid-template-columns: 110px 1fr auto; }
   .score-block strong { font-size: 28px; }
   .rank-block strong { font-size: 10px; margin-top: 3px; }

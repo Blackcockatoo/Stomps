@@ -7,7 +7,7 @@
 // the real bundle in headless Chrome: load progress → ready, live region, settings
 // (mute, remap, persistence across reload), a remapped Street Strut run with pause,
 // Rhythm Royalty (chart chooser), stage-card alt text, the soundtrack/synth switch, service-worker
-// offline reload, no console/CSP errors, and immutable hashed
+// offline reload, phone viewports (390×844, 360×740), no console/CSP errors, and immutable hashed
 // assets. If no browser is found it prints SKIP and exits 0.
 //
 // CI stays unit-only (`npm run check`): a headless browser + audio/timing on shared
@@ -170,6 +170,43 @@ try {
     await ready();
     await context.setOffline(false);
   });
+
+  for (const [width, height] of [[390, 844], [360, 740]]) {
+    await step(`phone ${width}×${height}: no sideways scroll, ≥44px pads clear of the HUD, canvas HUD inside the crop`, async () => {
+      const phone = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+      const tab = await phone.newPage();
+      tab.on('pageerror', (err) => problems.push(`phone ${width} pageerror: ` + (err.stack ?? err.message)));
+      tab.on('response', (r) => r.status() >= 400 && problems.push(`phone ${width} http ${r.status()}: ${r.url()}`));
+      tab.on('console', (msg) => msg.type() === 'error' && problems.push(`phone ${width} console: ` + msg.text()));
+      await tab.goto(origin + '/');
+      assert.match(await tab.locator('meta[name="viewport"]').getAttribute('content'), /viewport-fit=cover/);
+      await tab.locator('.route-start').and(tab.locator(':enabled')).waitFor({ timeout: 20000 });
+      await shot(tab, `07-phone-${width}-menu`);
+      await tab.locator('.route-start').click();
+      await tab.waitForFunction(() => window.__moss?.mode === 'strut');
+      await tab.waitForTimeout(600);
+      const m = await tab.evaluate(() => {
+        const box = (el) => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
+        return {
+          scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth,
+          pads: [...document.querySelectorAll('.dock .pad')].map(box),
+          huds: [...document.querySelectorAll('.live-hud, .topbar')].map(box),
+          view: window.__moss.view,
+        };
+      });
+      assert.ok(m.scroll <= m.client, `no horizontal overflow (${m.scroll} > ${m.client})`);
+      assert.equal(m.pads.length, 3, 'three touch pads');
+      for (const pad of m.pads) {
+        assert.ok(pad.w >= 44 && pad.h >= 44, `pad ≥44px (${pad.w}×${pad.h})`);
+        assert.ok(pad.r <= width && pad.b <= height && pad.l >= 0, 'pad fully on screen');
+        for (const hud of m.huds) assert.ok(pad.r <= hud.l || pad.l >= hud.r || pad.b <= hud.t || pad.t >= hud.b, 'pad does not cover the HUD');
+      }
+      // Portrait crops the playfield; the canvas HUD must lay out inside the visible slice.
+      assert.ok(m.view.left > 0 && m.view.right < 480 && m.view.left < 132 && m.view.right > 132, `cropped view keeps Moss on screen (${JSON.stringify(m.view)})`);
+      await shot(tab, `08-phone-${width}-route`);
+      await phone.close();
+    });
+  }
 
   await step('no console, page or CSP errors', async () => {
     assert.deepEqual(problems, []);
