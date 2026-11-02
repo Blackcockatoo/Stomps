@@ -5,7 +5,15 @@ import { ANIM } from "../clips";
 import { COMBOS, tailMatch } from "./combos";
 import { GROUND } from "./types";
 import { canRecover, flowRecover } from "./flow";
-import { pointsFor } from "../feel";
+import type { Step } from "./types";
+
+/** Gameplay registers now; only presentation waits for committed animation. */
+function action(g: Arcade, steps: Step[]) {
+  if (ANIM[g.currentClip()].lock) {
+    g.bufferedSteps = steps;
+    g.bufferAt = g.now;
+  } else g.play(steps);
+}
 
 export function down(g: Arcade, btn: Btn) {
   if (!g.ready || g.mode === "pause" || g.mode === "menu" || g.mode === "result") return;
@@ -18,11 +26,6 @@ export function down(g: Arcade, btn: Btn) {
     return;
   }
   g.streetPending.set(btn, g.now);
-  if (ANIM[g.currentClip()].lock) {
-    g.buffered = btn;
-    g.bufferAt = g.now;
-    return;
-  }
   if (g.chordCheck()) {
     g.flushStreet();
     return;
@@ -56,7 +59,7 @@ export function chordCheck(g: Arcade) {
   if (held.has("B") && held.has("C") && !held.has("A") && simultaneous) {
     g.refundRecent();
     g.seq = [];
-    g.play([{ clip: "spin", speed: 1.2, once: true, flip: false }]);
+    action(g, [{ clip: "spin", speed: 1.2, once: true, flip: false }]);
     g.burst("spin", g.mossX(), GROUND - 36);
     g.burst("dust", g.mossX() + 6, GROUND);
     g.award("SPIN STOMP", 350, 0.12, true);
@@ -72,7 +75,7 @@ export function commitSingle(g: Arcade, btn: Btn) {
   const contested = g.streetViews().some((v) => !g.streetMarks.has(v.key) && Math.abs(v.dist) <= v.win.good);
   if (g.runKind !== "practice" && !contested && canRecover(g.flowState, g.now, g.beatJudge())) {
     g.flowState = flowRecover(g.flowState, g.now, g.beatJudge());
-    g.score += pointsFor(120);
+    // Recovery restores control, never awards points for making a mistake.
     g.callout = "FLOW RECOVERED";
     g.calloutLife = 0.9;
     g.announce("Flow recovered");
@@ -86,7 +89,7 @@ export function commitSingle(g: Arcade, btn: Btn) {
     g.hooks.onPractice?.(found.name);
     g.lastTechnique = { name: found.name, at: g.now };
     g.refundRecent();
-    g.play(found.steps);
+    action(g, found.steps);
     if (found.name === "HEEL-TOE HAMMER" || found.name === "DOUBLE TROUBLE" || found.name === "FRANKSTON SHUFFLE") {
       g.burst("dust", g.mossX() + 4, GROUND);
       g.burst("impact", g.mossX(), GROUND - 6);
@@ -102,14 +105,14 @@ export function commitSingle(g: Arcade, btn: Btn) {
     return;
   }
   if (btn === "A") {
-    g.play([{ clip: "strut", speed: 1.35, once: false, flip: g.faceLeft }]);
+    action(g, [{ clip: "strut", speed: 1.35, once: false, flip: g.faceLeft }]);
     g.burst("dust", g.mossX() + 4, GROUND);
   } else if (btn === "B") {
-    g.play([{ clip: "stomp", speed: 1, once: true, flip: false }]);
+    action(g, [{ clip: "stomp", speed: 1, once: true, flip: false }]);
     g.burst("dust", g.mossX() + 2, GROUND);
 
   } else {
-    g.play([{ clip: "style", speed: 1, once: true, flip: false }]);
+    action(g, [{ clip: "style", speed: 1, once: true, flip: false }]);
     g.burst("sparks", g.mossX() + 16, GROUND - 68);
     g.groove.style();
   }

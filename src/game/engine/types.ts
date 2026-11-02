@@ -24,6 +24,11 @@ export type ResultStats = {
   maxCombo: number;
   flowPeak?: number;
   goldenBonus?: number;
+  mastery?: import("../mastery").MasteryGrade;
+  accuracy?: number;
+  advice?: string;
+  variant?: number;
+  techniqueCount?: number;
 };
 
 export type Step = {

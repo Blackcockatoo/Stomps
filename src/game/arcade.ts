@@ -147,6 +147,10 @@ export class Arcade {
   quakeLock = 0;
   quakeHit = false;
   buffered: Btn | null = null;
+  bufferedSteps: Step[] | null = null;
+  actionBeat = -1;
+  techniques = new Set<string>();
+  signatureHits = 0;
   bufferAt = 0;
   grants: Grant[] = [];
   downAt = new Map<Btn, number>();
@@ -442,6 +446,11 @@ export class Arcade {
     }
     if (this.mode !== "strut" && this.mode !== "rhythm") return;
     this.keys.clear();
+    this.bufferedSteps = null;
+    this.buffered = null;
+    this.streetPending.clear();
+    this.seq = [];
+    this.downAt.clear();
     this.pausedFrom = this.mode;
     this.mode = "pause";
     this.groove.suspend();
@@ -505,6 +514,10 @@ export class Arcade {
   resetRound() {
     this.score = 0;
     this.flowState = newFlow();
+    this.bufferedSteps = null;
+    this.actionBeat = -1;
+    this.techniques.clear();
+    this.signatureHits = 0;
     this.displayScore = 0;
     this.observedScore = 0;
     this.gain = 0;
@@ -547,6 +560,7 @@ export class Arcade {
     if (!frozen) {
       this.now += dt;
       if (this.mode === "strut" || this.mode === "rhythm" || this.mode === "menu") {
+        this.groove.setPerformance(this.mode === "strut" ? this.flowState.level : 0, !!this.bonus);
         this.groove.pump();
       }
     }

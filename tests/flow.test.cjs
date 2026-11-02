@@ -34,7 +34,7 @@ test('successful street encounter replaces speculative press points', () => {
   assert.equal(a.streetPerfect,1);
   assert.equal(a.grants.length,0);
   assert.ok(a.score>=3500);
-  a.settleStreet(spec,'two',100,13);
+  a.settleStreet(spec,'two',18,13);
   assert.equal(a.flowState.chain,2);
 });
 test('misses affect charge, cause stumble and allow recovery', () => {

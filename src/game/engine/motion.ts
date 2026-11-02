@@ -16,6 +16,7 @@ export function currentClip(g: Arcade): ClipId {
 }
 
 export function burst(g: Arcade, kind: keyof typeof FX, x: number, y: number) {
+  if (g.sparks.length >= 32) g.sparks.shift();
   g.sparks.push({ kind, t: 0, x, y });
 }
 
@@ -68,10 +69,10 @@ export function advanceAnim(g: Arcade, dt: number) {
         g.frameAcc = 0;
         return;
       } else {
-        const buffered = g.buffered && g.now - g.bufferAt < 0.22 ? g.buffered : null;
+        const buffered = g.bufferedSteps && g.now - g.bufferAt < 0.22 ? g.bufferedSteps : null;
         g.buffered = null;
-        play(g, [{ ...STRUT, flip: g.faceLeft }]);
-        if (buffered && g.mode === "strut") g.commitSingle(buffered);
+        g.bufferedSteps = null;
+        play(g, buffered && g.mode === "strut" ? buffered : [{ ...STRUT, flip: g.faceLeft }]);
         return;
       }
     }
@@ -90,6 +91,7 @@ function plant(g: Arcade, clip: ClipId) {
   if (clip !== "strut" && clip !== "stomp" && clip !== "slide") return;
   if (!g.reducedMotion) g.body.kick(clip === "slide" ? 38 : -9, clip === "stomp" ? 42 : -12);
   burst(g, "dust", mossX(g) + (g.faceLeft ? -6 : 8), GROUND);
+  if (clip === "strut" || clip === "slide") g.groove.footstep();
   if (clip === "stomp") {
     g.impactLife = 0.16;
     burst(g, "impact", mossX(g), GROUND - 4);
@@ -109,7 +111,7 @@ export function tickEffects(g: Arcade, dt: number) {
     g.trailClock = 0;
     const step = g.queue[g.stepIndex];
     const img = step && g.mossFrames(step.clip)?.[g.frame];
-    if (img && (step.clip === "slide" || step.clip === "spin" || g.rewardPower > 0.3)) {
+    if (img && (step.clip === "slide" || step.clip === "spin" || g.flowState.level >= 2 || g.rewardPower > 0.3)) {
       g.trails.push({ img, x: mossX(g) + g.body.x, y: GROUND + CELL.solePad + g.body.y, flip: step.flip || g.faceLeft, life: 0.16 });
       g.trails = g.trails.slice(-6);
     }

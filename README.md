@@ -26,9 +26,21 @@ Six authored challenges now span the pier approach and deck. A flawless six-PERF
 
 Street interactions now support a signposted move and learned alternatives. Matching named combos at an encounter earn a signature technique reward. Precisely delayed actions can earn a close-call reward on non-person objects. Repeated journeys vary some existing shop and pier interactions deterministically without changing their positions or cue windows, so all challenges remain learnable. No new art or controls.
 
+## Project Stratosphere — verified foundation release
+
+- Inputs continue registering during the committed MOSSQUAKE animation. The newest presentation action gets a 220 ms handoff window; it is never scored again on dequeue. Combo gaps below 90 ms are rejected as accidental chords.
+- Route points and Quake charge come from encounters and earned specials. Empty-pavement flourishes still animate, but cannot farm a route record. Free-play flourish rewards are limited to one per beat. Recovery restores a reduced chain without a bonus payout; settled encounters reject duplicates and out-of-window claims.
+- D/C/B/A/S/S+/S++ grades use coverage, precision, longest FLOW, distinct contextual techniques and Golden execution. Advice appears on the result. New records are separate for the two canonical arrangements and this ruleset; legacy scores/settings stay readable.
+- The original 104 BPM clock schedules FLOW percussion, melodic accents, high-FLOW flourishes and a celebratory bonus layer. Arrangement changes enter at bar boundaries; movement accents coalesce on eighth notes. MOSSQUAKE receives a grid-aligned accent. Recorded soundtrack support, calibration, mute and volume remain available.
+- FLOW trails begin at level two, effects remain bounded, finished synth nodes disconnect, and stalled audio scheduling skips stale notes.
+- Portrait play shows the entire street. Pause clears pending chords and buffered presentation actions.
+- Whole-route deterministic input replays test both arrangements against repeated and varied mashing, including bonus transitions and completion. See `tests/stratosphere.test.cjs` and `tests/audio.test.cjs`.
+
+Scope still open: performance-adaptive encounter composition, additional authored street sequences, new character transition artwork, full device battery/memory profiling, and physical Android/iPhone validation. Existing authored route variants, pier gauntlet, Golden World and environmental responses are retained, not presented as newly implemented features.
+
 ## P3.1 — MOSS FLOW (skill foundation)
 
-Street encounters build a separate five-tier FLOW chain, from IN THE GROOVE to PAVEMENT ROYALTY. Each clean encounter advances the chain; a missed encounter halves it, drains 10% Quake Drive and briefly stumbles Moss. A beat-accurate move during a visible 1.8-second recovery window restores most, not all, of the lost momentum. Plain movement earns modest flourish points and cannot build FLOW. Confirmed encounters replace rather than double-pay their button scores. The live HUD displays FLOW, route results show peak FLOW, and Rhythm Royalty and the local save schema remain unaffected. New unit tests exercise the skill rules.
+Street encounters build a separate five-tier FLOW chain, from THE STRUT to PAVEMENT ROYALTY. Each clean encounter advances the chain; a missed encounter halves it, drains 10% Quake Drive and briefly stumbles Moss. A beat-accurate move during a visible 1.8-second recovery window restores most, not all, of the lost momentum. Plain movement earns modest flourish points and cannot build FLOW. Confirmed encounters replace rather than double-pay their button scores. The live HUD displays FLOW, route results show peak FLOW, and Rhythm Royalty and the local save schema remain unaffected. New unit tests exercise the skill rules.
 
 ## Hyper Drive
 
@@ -46,7 +58,7 @@ The site has a web manifest and a build-generated service worker (`dist/sw.js`).
 
 - The service worker only registers on secure contexts (HTTPS or `localhost`).
 - Updates: the page is fetched network-first and the cache name is versioned by a hash of the build, so a new deploy is picked up on the next load after it lands (offline you keep the cached build). `sw.js` itself is served `no-cache`.
-- Layout respects safe-area insets (`viewport-fit=cover`); on portrait phones the street is cropped to fill the screen and the canvas HUD is drawn inside the visible slice.
+- Layout respects safe-area insets (`viewport-fit=cover`); portrait street play contains the full 480×270 playfield, preserving upcoming objects and timing cues.
 
 ## Build and deploy
 
