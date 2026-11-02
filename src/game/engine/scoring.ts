@@ -64,15 +64,17 @@ export function award(g: Arcade, label: string, base: number, meterGain: number,
   const planted = ANIM[g.currentClip()].contacts.includes(g.frame);
   const flow = !combo && planted ? 1.12 : 1;
   const timing = g.beatJudge();
+  // Empty-ground action spam cannot outperform precision street encounters.
+  const strayAction = g.mode === "strut" && !combo ? 0.18 : 1;
   const mult =
     (timing === "PERFECT" ? 1.6 : timing === "FRESH" ? 1.25 : timing === "LATE" ? 0.85 : 0.55) *
     spam *
     (combo ? 1 : variety) *
-    flow;
+    flow * strayAction;
   const points = pointsFor(base * mult);
   g.score += points;
   const before = g.meter;
-  g.meter = Math.min(1, before + meterGain * spam * (timing === "OFF" ? 0.8 : 1));
+  g.meter = Math.min(1, before + meterGain * spam * (timing === "OFF" ? 0.8 : 1) * strayAction);
   if (!combo) g.grants.push({ points, meter: g.meter - before, at: g.now });
   g.grants = g.grants.filter((grant) => g.now - grant.at < 0.2);
   if (

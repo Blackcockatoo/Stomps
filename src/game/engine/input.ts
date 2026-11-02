@@ -4,6 +4,8 @@ import type { Btn } from "../arcade-types";
 import { ANIM } from "../clips";
 import { COMBOS, tailMatch } from "./combos";
 import { GROUND } from "./types";
+import { canRecover, flowRecover } from "./flow";
+import { pointsFor } from "../feel";
 
 export function down(g: Arcade, btn: Btn) {
   if (!g.ready || g.mode === "pause" || g.mode === "menu" || g.mode === "result") return;
@@ -67,6 +69,15 @@ export function chordCheck(g: Arcade) {
 }
 
 export function commitSingle(g: Arcade, btn: Btn) {
+  const contested = g.streetViews().some((v) => !g.streetMarks.has(v.key) && Math.abs(v.dist) <= v.win.good);
+  if (g.runKind !== "practice" && !contested && canRecover(g.flowState, g.now, g.beatJudge())) {
+    g.flowState = flowRecover(g.flowState, g.now, g.beatJudge());
+    g.score += pointsFor(120);
+    g.callout = "FLOW RECOVERED";
+    g.calloutLife = 0.9;
+    g.announce("Flow recovered");
+    g.groove.combo();
+  }
   g.seq.push({ btn, t: g.now });
   g.seq = g.seq.filter((s) => g.now - s.t < 2.6);
   const found = COMBOS.find((combo) => tailMatch(g.seq, combo.keys));

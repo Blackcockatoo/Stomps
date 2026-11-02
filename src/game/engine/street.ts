@@ -1,6 +1,7 @@
 /** Street Strut: movement, the authored route (THE LONG WAY HOME), street windows and route results. */
 import type { Arcade } from "../arcade";
 import { pointsFor } from "../feel";
+import { flowHit, flowMiss, flowMultiplier, flowName } from "./flow";
 import { ROUTE_PX, STREETS, isPrefix, sameTrigger, streetX, windowsFor, type StreetSpec } from "../route";
 import { GROUND, MOSS_X } from "./types";
 import { BONUS_MULT, bonusViews, tickBonus, tickDoor } from "../bonus";
@@ -66,7 +67,8 @@ export function finishRoute(g: Arcade) {
   g.hooks.onResult({ kind: "route", seconds: g.now, score: g.score,
     personalBest: g.bestRoute, newRecord,
     perfect: g.streetPerfect, fresh: g.streetGood, late: 0,
-    stumble: g.streetMiss, maxCombo: g.routeMaxChain, bonus: g.bonusCleared });
+    stumble: g.streetMiss, maxCombo: g.flowState.longest, bonus: g.bonusCleared,
+    flowPeak: g.flowState.peak });
   g.hooks.onMode("result");
 }
 
@@ -133,7 +135,14 @@ function scanOne(g: Arcade, key: string, dist: number, win: View["win"]) {
   if (dist < -win.good && dist > -480) {
     g.streetMarks.set(key, { kind: "miss", at: g.now });
     g.streetMiss += 1;
-    g.announce("Missed");
+    g.flowState = flowMiss(g.flowState, g.now);
+    g.streak = 0;
+    g.meter = Math.max(0, g.meter - 0.10);
+    if (g.currentClip() !== "quake") g.play([{ clip: "stumble", speed: 1.25, once: true, flip: false }]);
+    g.callout = "STUMBLED / RECOVER ON BEAT";
+    g.calloutLife = 0.95;
+    g.groove.miss();
+    g.announce("Missed street move. Tap on beat to recover flow.");
   }
 }
 
@@ -159,16 +168,19 @@ export function flushStreet(g: Arcade) {
 
 export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: number, perfectPx: number) {
   const kind = Math.abs(dist) <= perfectPx ? "perfect" : "good";
+  g.refundRecent(); // A button and its street encounter must never pay twice.
+  const previousLevel = g.flowState.level;
+  g.flowState = flowHit(g.flowState);
   g.streetMarks.set(key, { kind, at: g.now });
   if (kind === "perfect") g.streetPerfect += 1;
   else g.streetGood += 1;
   const variety = [1, 1.1, 1.4, 1.8][Math.min(3, new Set(g.recent).size)] ?? 1;
   const mult = g.bonus ? BONUS_MULT : 1;
-  const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult);
+  const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult * flowMultiplier(g.flowState));
   g.score += points;
   if (!g.bonus) g.lapHits += 1;
   g.meter = Math.min(1, g.meter + (kind === "perfect" ? 0.07 : 0.04));
-  g.callout = mult > 1 ? `${spec.feedback} ×${mult}` : spec.feedback;
+  g.callout = g.flowState.level > previousLevel ? flowName(g.flowState.level) : mult > 1 ? `${spec.feedback} ×${mult}` : spec.feedback;
   g.announce(`${kind === "perfect" ? "Perfect" : "Good"}: ${spec.feedback.toLowerCase()}${mult > 1 ? `, times ${mult}` : ""}`);
   g.calloutLife = 1.05;
   g.popups.push({
