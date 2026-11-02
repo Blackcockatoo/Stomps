@@ -29,7 +29,7 @@ if (!existsSync('dist/index.html')) {
 }
 const { chromium } = await import('playwright-core');
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg' };
 const rules = JSON.parse(readFileSync('vercel.json', 'utf8')).headers.map((rule) => ({ re: new RegExp('^' + rule.source + '$'), headers: rule.headers }));
 const server = http.createServer(async (req, res) => {
   const url = decodeURIComponent(new URL(req.url, 'http://local').pathname);
@@ -132,6 +132,9 @@ try {
     await page.keyboard.up('KeyA');
     await page.keyboard.press('KeyS');
     await shot(page, '04-strut');
+    // Soundtrack: synth unless the build advertised public/audio/neon-strut.*.
+    const advertised = readFileSync('dist/index.html', 'utf8').includes('name="moss-soundtrack"');
+    await page.waitForFunction((want) => window.__moss?.soundtrack === want, advertised ? 'recorded' : 'synth', { timeout: 10000 });
     await page.keyboard.press('Escape');
     assert.match(await mode(), /mode-pause/);
     await page.keyboard.press('Escape');

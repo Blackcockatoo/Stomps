@@ -54,4 +54,13 @@ const cacheFor = (source) => vercel.headers.find((h) => h.source === source)?.he
 assert.match(cacheFor('/assets/(.*)'), /immutable/, 'hashed assets must be served immutable');
 assert.match(cacheFor('/index.html'), /max-age=0/, 'index.html must revalidate');
 
+
+// 4. The soundtrack meta matches what is actually in public/audio.
+for (const ext of ['ogg', 'mp3']) {
+  const url = `/audio/neon-strut.${ext}`;
+  if (existsSync('public' + url)) {
+    assert.ok(html.includes(url), 'index.html does not advertise ' + url);
+    assert.deepEqual(readFileSync('public' + url), readFileSync('dist' + url), 'Soundtrack changed during build: ' + url);
+  } else assert.ok(!html.includes(url), 'index.html advertises missing ' + url);
+}
 console.log(`PASS: ${urls.size} game/lab/stage assets byte-identical in dist; hashed bundles ${manifest['arcade.js']} + ${manifest['arcade.css']} with sourcemaps.`);

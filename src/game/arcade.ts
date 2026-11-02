@@ -15,7 +15,7 @@
  * Fields are public for those modules and the unit tests; they are not an API.
  */
 import { BodySpring } from "./feel";
-import { Groove } from "./audio";
+import { Groove, pickTrack, soundtrackUrls } from "./audio";
 import type { Btn } from "./arcade-types";
 import { CHART_END_BEAT, buildChart, isDifficulty, type Difficulty } from "./chart";
 import type { ClipId, FX } from "./clips";
@@ -225,6 +225,9 @@ export class Arcade {
   }
 
   async boot() {
+    if (typeof document !== "undefined") {
+      this.groove.trackUrl = pickTrack(soundtrackUrls(), (mime) => document.createElement("audio").canPlayType(mime));
+    }
     try {
       const art = emptyArt();
       this.clips = art.clips;

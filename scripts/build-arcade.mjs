@@ -6,6 +6,7 @@
 //   dist/assets/manifest.json        (logical name → hashed path, used by check-assets)
 //   dist/<everything in public/>     (copied byte-for-byte; sprites keep their own paths)
 import { build } from 'esbuild';
+import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -59,7 +60,12 @@ for (const [name, url] of Object.entries(manifest)) {
   if (!html.includes(ref)) throw new Error(`arcade.html does not reference ${ref}`);
   html = html.replace(ref, `"${url}"`);
 }
+// Optional recorded soundtrack (see src/game/audio.ts). Advertised with a meta tag
+// so the game never probes for a file that is not there.
+const tracks = ['ogg', 'mp3'].map((ext) => `/audio/neon-strut.${ext}`).filter((url) => existsSync('public' + url));
+if (tracks.length) html = html.replace('</head>', `<meta name="moss-soundtrack" content="${tracks.join(',')}">\n</head>`);
 await writeFile(`${OUT}/index.html`, html);
 
 const kb = (file) => (Object.values(file.metafile.outputs).find((o) => o.entryPoint)?.bytes ?? 0) / 1024;
 console.log(`Arcade built: ${manifest['arcade.js']} (${kb(js).toFixed(1)} kB), ${manifest['arcade.css']} (${kb(css).toFixed(1)} kB).`);
+console.log(tracks.length ? `Soundtrack: ${tracks.join(', ')}` : 'Soundtrack: none (synth groove)');

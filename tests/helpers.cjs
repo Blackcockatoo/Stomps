@@ -37,6 +37,7 @@ buildSync({
       "export * as route from './src/game/route';",
       "export * as skin from './src/game/skin';",
       "export * as bonus from './src/game/bonus';",
+      "export * as audio from './src/game/audio';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',
