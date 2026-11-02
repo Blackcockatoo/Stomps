@@ -24,7 +24,7 @@ export const REPORT = {
   ],
   tests: [
     "Route audit: event gaps stay wider than a sprint telegraph plus a good window.",
-    "Street Strut leaves the van on the shared pavement. A crossing stomp on the beat scores ON THE BEAT. A+C on the skateboard scores SIDEWINDER. Heel-Toe Hammer still returns to the strut.",
+    "Street Strut leaves the van on the shared pavement. A crossing stomp on the beat scores ON THE BEAT. A+D on the skateboard scores SIDEWINDER. Heel-Toe Hammer still returns to the strut.",
     "Passing a station event without its button adds a miss, does not take points, and does not play the stumble.",
     "Heel-Toe Hammer still fires. Landscape and portrait were checked in the browser, not on a handset.",
   ],

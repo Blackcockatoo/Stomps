@@ -4,6 +4,7 @@ import { Arcade, COMBOS, type Btn, type Mode, type ResultStats, type LiveHud } f
 import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, type ClipInfo } from "@/game/clips";
 import { ROUTE_CARDS } from "@/game/route";
 import { REPORT } from "@/game/report";
+import { keyBtn, keyLabel, keysLabel } from "@/game/keys";
 
 type Panel = "none" | "lab" | "notes" | "hints" | "stages";
 
@@ -224,7 +225,7 @@ export function MossApp() {
         {playing && runKind === "practice" ? <div className="practice-card" aria-live="polite">
           <span className="eyebrow">FOOTWORK / {mastered.length} OF {COMBOS.length} MOVES LANDED</span>
           <h2>{COMBOS[lesson].name}</h2>
-          <p className="practice-keys">{COMBOS[lesson].keys.map((key) => key === "B" ? "S" : key === "C" ? "D" : "A").join(" → ")}</p>
+          <p className="practice-keys">{keysLabel(COMBOS[lesson].keys, " → ")}</p>
           <p>Tap in order. Release between taps. Finish the sequence within 2.6 seconds.</p>
           <strong>{landed === COMBOS[lesson].name ? "LANDED. THAT’S THE ONE." : landed ? `Landed ${landed.toLowerCase()}. Try the pattern above.` : "Take your time finding the pattern."}</strong>
           <button type="button" className="cab-btn" onClick={() => { setLesson((lesson + 1) % COMBOS.length); setLanded(null); }}>NEXT MOVE →</button>
@@ -287,7 +288,7 @@ export function MossApp() {
             >
               <img src={held[pad.id] ? pad.down : pad.idle} alt="" />
               <span>
-                {pad.id === "B" ? "S" : pad.id === "C" ? "D" : "A"} / {pad.name}
+                {keyLabel(pad.id)} / {pad.name}
               </span>
             </button>
           ))}
@@ -301,30 +302,25 @@ export function MossApp() {
   );
 }
 
-function keyBtn(code: string): Btn | null {
-  if (code === "KeyA") return "A";
-  if (code === "KeyS") return "B";
-  if (code === "KeyD") return "C";
-  return null;
-}
-
 function Hints() {
+  const combo = (keys: Btn[]) => keysLabel(keys, " ");
   return (
     <>
       <h2>THREE BUTTONS</h2>
       <p>
-        A or the A key is stride. S is stomp. D is style. Hold A to push the scroll. Hold A and C together to face
-        back while the street keeps moving.
+        {keyLabel("A")} is stride, {keyLabel("B")} is stomp, {keyLabel("C")} is style — on the keyboard or the three
+        pads. Hold {keyLabel("A")} to push the scroll. Hold {keysLabel(["A", "C"], " and ")} together to face back
+        while the street keeps moving.
       </p>
       <h3>COMBOS</h3>
       <ul>
-        <li>A A B — Heel-Toe Hammer</li>
-        <li>A C A — Royal Swagger</li>
-        <li>B B C — Double Trouble</li>
-        <li>C A B — Frankston Shuffle</li>
-        <li>A B C B — Street Coronation</li>
-        <li>B + C together — Spin Stomp</li>
-        <li>A + B + C with a full meter — MOSSQUAKE</li>
+        {COMBOS.map((item) => (
+          <li key={item.name}>
+            {combo(item.keys)} — {titleCase(item.name)}
+          </li>
+        ))}
+        <li>{keysLabel(["B", "C"], " + ")} together — Spin Stomp</li>
+        <li>{keysLabel(["A", "B", "C"], " + ")} with a full meter — MOSSQUAKE</li>
       </ul>
       <p>
         On-beat hits pay more. Repeating one button pays less each time, and the street does not stop. Chords only
@@ -336,14 +332,18 @@ function Hints() {
         means the window is open. Early or late pays nothing and does not trip Moss. People and birds are not targets.
       </p>
       <ul>
-        <li>Crossing and gulls — B</li>
-        <li>Blanket, puddle, give-way — A</li>
-        <li>Paper, bin, cloud, lamp — C</li>
-        <li>Busker and skateboard — A+C</li>
-        <li>Trolley — A+B</li>
+        <li>Crossing and gulls — {keyLabel("B")}</li>
+        <li>Blanket, puddle, give-way — {keyLabel("A")}</li>
+        <li>Paper, bin, cloud, lamp — {keyLabel("C")}</li>
+        <li>Busker and skateboard — {keysLabel(["A", "C"])}</li>
+        <li>Trolley — {keysLabel(["A", "B"])}</li>
       </ul>
     </>
   );
+}
+
+function titleCase(name: string) {
+  return name.toLowerCase().replace(/(^|[\s-])\S/g, (m) => m.toUpperCase());
 }
 
 function Notes() {
@@ -404,17 +404,23 @@ function Lab() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [clipId, setClipId] = useState(LAB_CLIPS[0]?.id ?? "strut");
   const clip = LAB_CLIPS.find((item) => item.id === clipId) ?? LAB_CLIPS[0]!;
-  const [frame, setFrame] = useState(0);
+  // The animation loop owns the frame in a ref; React only mirrors it for the stat line.
+  const frameRef = useRef(0);
+  const [frame, setFrameView] = useState(0);
+  const setFrame = (update: number | ((value: number) => number)) => {
+    const next = typeof update === "function" ? update(frameRef.current) : update;
+    frameRef.current = next;
+    setFrameView(next);
+  };
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   const [flip, setFlip] = useState(false);
   const [guide, setGuide] = useState(true);
   const [compare, setCompare] = useState(clip.id === "strut");
-  const [loopFlash, setLoopFlash] = useState(false);
+  const loopFlashRef = useRef(0);
   const framesRef = useRef<HTMLImageElement[]>([]);
   const phaseRef = useRef<HTMLImageElement[]>([]);
   const playRef = useRef({
-    frame: 0,
     playing: true,
     speed: 1,
     flip: false,
@@ -425,7 +431,6 @@ function Lab() {
     id: clip.id,
   });
   playRef.current = {
-    frame,
     playing,
     speed,
     flip,
@@ -448,7 +453,7 @@ function Lab() {
       return img;
     });
     setFrame(0);
-    setLoopFlash(false);
+    loopFlashRef.current = 0;
   }, [clip]);
 
   useEffect(() => {
@@ -456,9 +461,15 @@ function Lab() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    // Size the backing store once when the loop starts, not every frame.
+    const scale = 2;
+    canvas.width = 360 * scale;
+    canvas.height = 200 * scale;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
     let raf = 0;
     let acc = 0;
     let last = 0;
+    let shown = -1;
     const draw = (now: number) => {
       const state = playRef.current;
       const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016);
@@ -468,16 +479,18 @@ function Lab() {
         const step = 1 / state.fps;
         while (acc >= step) {
           acc -= step;
-          const next = (state.frame + 1) % state.count;
-          if (next === 0) setLoopFlash(true);
-          state.frame = next;
-          setFrame(state.frame);
+          const next = (frameRef.current + 1) % state.count;
+          if (next === 0) loopFlashRef.current = 0.25;
+          frameRef.current = next;
         }
       }
-      const scale = 2;
-      canvas.width = 360 * scale;
-      canvas.height = 200 * scale;
-      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      const frame = frameRef.current % state.count;
+      // Mirror into React only when the visible frame changes (fps, not rAF rate).
+      if (frame !== shown) {
+        shown = frame;
+        setFrameView(frame);
+      }
+      if (loopFlashRef.current > 0) loopFlashRef.current = Math.max(0, loopFlashRef.current - dt);
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = "#241428";
       ctx.fillRect(0, 0, 360, 200);
@@ -493,12 +506,12 @@ function Lab() {
       const ground = 168;
       const slots = showCompare
         ? [
-            { img: phaseRef.current[state.frame % PHASE1_STRUT.frames], x: 100, label: "PHASE I", pad: 0 },
-            { img: framesRef.current[state.frame], x: 250, label: "PHASE II", pad: CELL.solePad },
+            { img: phaseRef.current[frame % PHASE1_STRUT.frames], x: 100, label: "PHASE I", pad: 0 },
+            { img: framesRef.current[frame], x: 250, label: "PHASE II", pad: CELL.solePad },
           ]
         : [
             {
-              img: framesRef.current[state.frame],
+              img: framesRef.current[frame],
               x: 180,
               label: "",
               pad: state.id === "supplied-strut" || state.id === "phase1-strut" ? 0 : CELL.solePad,
@@ -530,16 +543,18 @@ function Lab() {
           ctx.fillText(slot.label, slot.x - 36, 16);
         }
       }
-      const contact = meta?.contacts.includes(state.frame) ?? false;
+      const contact = meta?.contacts.includes(frame) ?? false;
       ctx.fillStyle = contact ? "#f5c518" : "#6a5a62";
       ctx.fillRect(8, ground - 6, 10, 10);
       ctx.fillStyle = "#f4efe6";
       ctx.font = "10px Silkscreen, monospace";
       const ms = Math.round(1000 / state.fps / Math.max(0.25, state.speed));
-      ctx.fillText(`F ${state.frame + 1}/${state.count}  ${ms}ms  ${contact ? "FOOT" : "MOVE"}`, 8, 32);
-      if (state.frame === 0 && loopFlash) {
+      ctx.fillText(`F ${frame + 1}/${state.count}  ${ms}ms  ${contact ? "FOOT" : "MOVE"}`, 8, 32);
+      if (loopFlashRef.current > 0) {
         ctx.strokeStyle = "#e10600";
+        ctx.lineWidth = 2;
         ctx.strokeRect(2, 2, 356, 196);
+        ctx.lineWidth = 1;
       }
       raf = requestAnimationFrame(draw);
     };

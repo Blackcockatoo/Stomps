@@ -166,6 +166,7 @@ export class Arcade {
   private bestRoute = 0;
   private routeMaxChain = 0;
   private dead = false;
+  private probe: object | null = null;
   private keys = new Set<Btn>();
   mode: Mode = "menu";
   runKind: "free" | "route" | "practice" = "free";
@@ -274,13 +275,14 @@ export class Arcade {
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
-    this.publishProbe();
+    this.installProbe();
   }
 
   destroy() {
     this.dead = true;
     cancelAnimationFrame(this.raf);
     this.groove.stop();
+    this.removeProbe();
   }
 
   private async boot() {
@@ -319,6 +321,7 @@ export class Arcade {
           this.notesImg = imgs;
         }),
       );
+      jobs.push(loadFonts());
       await Promise.all(jobs);
       const problems = auditRoute();
       if (problems.length) {
@@ -348,7 +351,6 @@ export class Arcade {
     this.mode = "menu";
     this.groove.stop();
     this.hooks.onMode("menu");
-    this.publishProbe();
   }
 
   playStrut(kind: "free" | "route" | "practice" = "free") {
@@ -369,7 +371,6 @@ export class Arcade {
     this.play([{ clip: "strut", speed: 1, once: false, flip: false }]);
     this.callout = kind === "route" ? "ONE LAP. MAKE IT YOURS." : kind === "practice" ? "FIND YOUR FOOTWORK" : "DEPARTURE";
     this.calloutLife = 1.3;
-    this.publishProbe();
   }
 
   playRhythm() {
@@ -389,7 +390,6 @@ export class Arcade {
     }));
     this.hooks.onMode("rhythm");
     this.play([{ clip: "strut", speed: 1, once: false, flip: false }]);
-    this.publishProbe();
   }
 
   togglePause() {
@@ -424,7 +424,6 @@ export class Arcade {
     if (ANIM[this.currentClip()].lock) {
       this.buffered = btn;
       this.bufferAt = this.now;
-      this.publishProbe();
       return;
     }
     if (this.chordCheck()) {
@@ -433,13 +432,11 @@ export class Arcade {
     }
     this.commitSingle(btn);
     this.flushStreet();
-    this.publishProbe();
   }
 
   up(btn: Btn) {
     this.keys.delete(btn);
     if (this.mode === "rhythm") this.rhythmUp(btn);
-    this.publishProbe();
   }
 
   /** A single action for touch, keyboard assistive activation and the full-style HUD. */
@@ -1195,7 +1192,6 @@ export class Arcade {
     }
     this.scroll = actualScroll;
     this.drawHud();
-    this.publishProbe();
     if (!this.ready) {
       ctx.fillStyle = "#f4efe6";
       ctx.font = "10px 'Press Start 2P', monospace";
@@ -1485,22 +1481,26 @@ export class Arcade {
     }
   }
 
-  private publishProbe() {
+  /**
+   * Debug/test probe on window.__moss. Only installed in development (localhost)
+   * or when the page URL carries ?debug, and built once: snapshot fields are
+   * live getters, so nothing is allocated per frame.
+   */
+  private installProbe() {
+    if (!debugEnabled()) return;
+    const self = this;
     const probe = {
-      mode: this.mode,
-      score: this.score,
-      meter: this.meter,
-      clip: this.currentClip(),
-      frame: this.frame,
-      callout: this.callout,
-      ready: this.ready,
-      quakeLock: this.quakeLock,
-      held: [...this.keys],
-      downAt: Object.fromEntries([...this.downAt].map(([key, time]) => [key, Number(time.toFixed(3))])),
-      now: Number(this.now.toFixed(3)),
-    };
-    (window as unknown as { __moss?: unknown }).__moss = {
-      ...probe,
+      get mode() { return self.mode; },
+      get score() { return self.score; },
+      get meter() { return self.meter; },
+      get clip() { return self.currentClip(); },
+      get frame() { return self.frame; },
+      get callout() { return self.callout; },
+      get ready() { return self.ready; },
+      get quakeLock() { return self.quakeLock; },
+      get held() { return [...self.keys]; },
+      get downAt() { return Object.fromEntries([...self.downAt].map(([key, time]) => [key, Number(time.toFixed(3))])); },
+      get now() { return Number(self.now.toFixed(3)); },
       press: (btn: Btn) => {
         this.down(btn);
         window.setTimeout(() => this.up(btn), 90);
@@ -1535,6 +1535,38 @@ export class Arcade {
         this.now = Math.max(0, seconds);
       },
     };
+    this.probe = probe;
+    (window as unknown as { __moss?: unknown }).__moss = probe;
+  }
+
+  private removeProbe() {
+    if (!this.probe || typeof window === "undefined") return;
+    const w = window as unknown as { __moss?: unknown };
+    if (w.__moss === this.probe) delete w.__moss;
+    this.probe = null;
+  }
+}
+
+/** Waits for the self-hosted pixel fonts so canvas text never paints in a fallback face. Never rejects. */
+function loadFonts(): Promise<void> {
+  if (typeof document === "undefined" || !document.fonts) return Promise.resolve();
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 3000));
+  const fonts = Promise.all([
+    document.fonts.load("10px 'Press Start 2P'"),
+    document.fonts.load("16px Silkscreen"),
+  ]).then(() => document.fonts.ready).then(() => undefined, () => undefined);
+  return Promise.race([fonts, timeout]);
+}
+
+/** Debug tooling: localhost dev builds, or any build opened with ?debug. */
+export function debugEnabled(): boolean {
+  try {
+    if (typeof window === "undefined" || !window.location) return false;
+    const { hostname, search } = window.location;
+    if (new URLSearchParams(search).has("debug")) return true;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  } catch {
+    return false;
   }
 }
 
