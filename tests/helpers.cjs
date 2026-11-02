@@ -28,6 +28,7 @@ buildSync({
     contents: [
       "export * as arcade from './src/game/arcade';",
       "export * as feel from './src/game/feel';",
+      "export * as flow from './src/game/engine/flow';",
       "export * as storage from './src/game/storage';",
       "export * as keys from './src/game/keys';",
       "export * as gamepad from './src/game/engine/gamepad';",

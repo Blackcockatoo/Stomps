@@ -15,6 +15,7 @@
  * Fields are public for those modules and the unit tests; they are not an API.
  */
 import { BodySpring } from "./feel";
+import { newFlow, type FlowState } from "./engine/flow";
 import { Groove, pickTrack, soundtrackUrls } from "./audio";
 import type { Btn } from "./arcade-types";
 import { CHART_END_BEAT, buildChart, isDifficulty, type Difficulty } from "./chart";
@@ -126,6 +127,7 @@ export class Arcade {
   ];
 
   score = 0;
+  flowState: FlowState = newFlow();
   meter = 0;
   streak = 0;
   bestStrut = 0;
@@ -485,6 +487,7 @@ export class Arcade {
 
   resetRound() {
     this.score = 0;
+    this.flowState = newFlow();
     this.displayScore = 0;
     this.observedScore = 0;
     this.gain = 0;

@@ -18,6 +18,10 @@ Hold **A** to stride, tap **S** to stomp, use **D** for style. On phones, use th
 
 **Sound, sync & keys** (menu): volume and mute (also the SOUND toggle in the top bar), a tap-along that measures your audio/visual delay and offers a rhythm offset (SYNC −/+ still fine-tune it), and remappable keys. A **gamepad** (standard mapping) also works: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses. Screen readers get short announcements for judgements, combos and milestones through a polite live region.
 
+## P3.1 — MOSS FLOW (skill foundation)
+
+Street encounters build a separate five-tier FLOW chain, from IN THE GROOVE to PAVEMENT ROYALTY. Each clean encounter advances the chain; a missed encounter halves it, drains 10% Quake Drive and briefly stumbles Moss. A beat-accurate move during a visible 1.8-second recovery window restores most, not all, of the lost momentum. Plain movement earns modest flourish points and cannot build FLOW. Confirmed encounters replace rather than double-pay their button scores. The live HUD displays FLOW, route results show peak FLOW, and Rhythm Royalty and the local save schema remain unaffected. New unit tests exercise the skill rules.
+
 ## Hyper Drive
 
 10× point values throughout the scoring system, readable aggregated reward bursts, animated total score, street-status ranks, full-width segmented Quake Drive, continuous body springs, actual previous-pose trails, speed streaks and contact-timed dust/shockwaves. The fixed simulation keeps scoring and timing independent of display refresh rate. Reduced-motion settings remove cosmetic springs, trails, particles and shake. Original sprite PNGs are retained without resampling or repainting. Previous best scores migrate to the new scale.
