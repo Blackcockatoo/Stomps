@@ -1,4 +1,5 @@
 import type { Btn } from "./arcade-types";
+import { isDifficulty, type Difficulty } from "./chart";
 
 /**
  * One versioned save for everything the cabinet remembers locally.
@@ -31,7 +32,14 @@ export type SaveData = {
   audioOffset: number;
   audio: { volume: number; muted: boolean };
   keys: KeyMap;
+  /** Last Rhythm Royalty difficulty picked (added in P2; older saves read as "normal"). */
+  difficulty: Difficulty;
+  /** Moss's hoodie: the supplied red, or the runtime cream recolour (added in P2). */
+  skin: Skin;
 };
+
+export type Skin = "classic" | "cream";
+export const SKINS: readonly Skin[] = ["classic", "cream"];
 
 export function defaultSave(): SaveData {
   return {
@@ -40,6 +48,8 @@ export function defaultSave(): SaveData {
     audioOffset: 0,
     audio: { volume: 0.8, muted: false },
     keys: { ...DEFAULT_KEYS },
+    difficulty: "normal",
+    skin: "classic",
   };
 }
 
@@ -94,6 +104,8 @@ export function sanitize(raw: unknown): SaveData {
     audioOffset: clampOffset(r.audioOffset),
     audio: { volume: clamp01(r.audio?.volume, base.audio.volume), muted: r.audio?.muted === true },
     keys: cleanKeys(r.keys),
+    difficulty: isDifficulty(r.difficulty) ? r.difficulty : base.difficulty,
+    skin: r.skin === "cream" ? "cream" : base.skin,
   };
 }
 

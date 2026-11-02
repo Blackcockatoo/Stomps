@@ -6,8 +6,9 @@ import { ROUTE_CARDS } from "@/game/route";
 import { REPORT } from "@/game/report";
 import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
 import { DEFAULT_KEYS, type KeyMap } from "@/game/storage";
+import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from "@/game/chart";
 
-type Panel = "none" | "lab" | "notes" | "hints" | "stages" | "settings";
+type Panel = "none" | "lab" | "notes" | "hints" | "stages" | "settings" | "rhythm";
 type AudioPrefs = { volume: number; muted: boolean };
 /** Taps collected per calibration attempt (the first CALIBRATION_WARMUP are ignored). */
 const CAL_TAPS = 12;
@@ -41,6 +42,7 @@ export function MossApp() {
   const [audio, setAudio] = useState<AudioPrefs>({ volume: 0.8, muted: false });
   const [keymap, setKeymap] = useState<KeyMap>({ ...DEFAULT_KEYS });
   const [offset, setOffset] = useState(0);
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   /** Which action is waiting for a new key (key remap), if any. */
   const [capture, setCapture] = useState<Btn | null>(null);
   const captureRef = useRef<Btn | null>(null);
@@ -85,6 +87,7 @@ export function MossApp() {
     setAudio({ ...arcade.save.audio });
     setKeymap({ ...arcade.save.keys });
     setOffset(arcade.audioOffset);
+    setDifficulty(arcade.difficulty);
     arcade.start();
     const onKey = (event: KeyboardEvent) => {
       const waiting = captureRef.current;
@@ -192,13 +195,16 @@ export function MossApp() {
     setPanel("none");
   }
 
-  function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" = "free") {
+  function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" = "free", chart: Difficulty = difficulty) {
     setRunKind(kind);
     setLanded(null);
     setPanel("none");
     setResult(null);
     if (next === "strut") arcadeRef.current?.playStrut(kind);
-    else arcadeRef.current?.playRhythm();
+    else {
+      setDifficulty(chart);
+      arcadeRef.current?.playRhythm(chart);
+    }
   }
 
   return (
@@ -294,8 +300,8 @@ export function MossApp() {
                 <button type="button" className="cab-btn primary" disabled={!ready} onClick={() => go("strut")}>
                   STREET STRUT / FREE PLAY
                 </button>
-                <button type="button" className="cab-btn gold" disabled={!ready} onClick={() => go("rhythm")}>
-                  RHYTHM ROYALTY
+                <button type="button" className="cab-btn gold" disabled={!ready} onClick={() => setPanel("rhythm")}>
+                  RHYTHM ROYALTY <small>{DIFFICULTY_INFO[difficulty].label}</small>
                 </button>
                 <button type="button" className="cab-btn" onClick={() => setPanel("lab")}>
                   ANIMATION LAB
@@ -322,7 +328,7 @@ export function MossApp() {
           <div className="overlay">
             <div>
               <h2 className="brand">
-                {result.kind === "route" ? "HOME IN STYLE" : "ROYALTY"}
+                {result.kind === "route" ? "HOME IN STYLE" : `ROYALTY / ${DIFFICULTY_INFO[result.difficulty ?? difficulty].label}`}
                 <em>
                   {result.score} · perfect {result.perfect} · fresh {result.fresh} · late {result.late} · stumbled{" "}
                   {result.stumble} · chain {result.maxCombo}
@@ -362,6 +368,7 @@ export function MossApp() {
             {panel === "hints" ? <Hints /> : null}
             {panel === "notes" ? <Notes /> : null}
             {panel === "stages" ? <Stages /> : null}
+            {panel === "rhythm" ? <Chooser current={difficulty} ready={ready} onPick={(chart) => go("rhythm", "free", chart)} /> : null}
             {panel === "settings" ? (
               <Settings
                 audio={audio}
@@ -493,6 +500,33 @@ function Hints() {
         <li>Trolley — {keysLabel(["A", "B"])}</li>
       </ul>
     </>
+  );
+}
+
+/** Rhythm Royalty pre-start: one press picks the chart and starts it; the last pick has focus. */
+function Chooser(props: { current: Difficulty; ready: boolean; onPick: (difficulty: Difficulty) => void }) {
+  return (
+    <div className="chooser">
+      <h2>RHYTHM ROYALTY</h2>
+      <p>Pick a chart. Your pick is remembered for next time. Same groove, same 104 BPM.</p>
+      <div className="menu-actions" role="group" aria-label="Chart difficulty">
+        {DIFFICULTIES.map((level) => (
+          <button
+            key={level}
+            type="button"
+            className={`cab-btn ${level === props.current ? "gold" : ""}`}
+            disabled={!props.ready}
+            autoFocus={level === props.current}
+            aria-describedby={`chart-${level}`}
+            onClick={() => props.onPick(level)}
+          >
+            {DIFFICULTY_INFO[level].label}
+            {level === props.current ? " · LAST PICK" : ""}
+            <small id={`chart-${level}`}>{DIFFICULTY_INFO[level].blurb}</small>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

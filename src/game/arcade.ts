@@ -17,7 +17,7 @@
 import { BodySpring } from "./feel";
 import { Groove } from "./audio";
 import type { Btn } from "./arcade-types";
-import { CHART_END_BEAT, buildChart } from "./chart";
+import { CHART_END_BEAT, buildChart, isDifficulty, type Difficulty } from "./chart";
 import type { ClipId, FX } from "./clips";
 import { CRUISE_PX, auditRoute, type StreetSpec } from "./route";
 import { bakeWorld, type WorldArt } from "./scenery";
@@ -161,6 +161,7 @@ export class Arcade {
   judgeText = "";
   judgeLife = 0;
   songDur = 0;
+  difficulty: Difficulty = "normal";
   /** Tap-along calibration taps (groove seconds); null when not calibrating. */
   calTaps: number[] | null = null;
 
@@ -176,6 +177,7 @@ export class Arcade {
     this.bestStrut = this.save.best.strut;
     this.bestRhythm = this.save.best.rhythm;
     this.audioOffset = this.save.audioOffset;
+    this.difficulty = this.save.difficulty;
     this.groove.setLevel(this.save.audio.volume, this.save.audio.muted);
     setKeyMap(this.save.keys);
     this.hooks.onRouteBest?.(this.bestRoute);
@@ -330,7 +332,17 @@ export class Arcade {
     this.calloutLife = 1.3;
   }
 
-  playRhythm() {
+  /** Remembers the Rhythm Royalty difficulty in the save. */
+  setDifficulty(difficulty: Difficulty) {
+    if (!isDifficulty(difficulty)) return;
+    this.difficulty = difficulty;
+    this.save = updateSave((save) => {
+      save.difficulty = difficulty;
+    });
+  }
+
+  playRhythm(difficulty: Difficulty = this.difficulty) {
+    if (difficulty !== this.difficulty) this.setDifficulty(difficulty);
     this.calTaps = null;
     this.resetRound();
     this.mode = "rhythm";
@@ -339,7 +351,7 @@ export class Arcade {
     this.maxCombo = 0;
     this.groove.start();
     this.songDur = CHART_END_BEAT * this.groove.beatDur;
-    this.chart = buildChart(this.groove.beatDur).map((note) => ({
+    this.chart = buildChart(this.groove.beatDur, this.difficulty).map((note) => ({
       ...note,
       hit: false,
       missed: false,

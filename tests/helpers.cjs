@@ -33,6 +33,7 @@ buildSync({
       "export * as gamepad from './src/game/engine/gamepad';",
       "export * as rhythm from './src/game/engine/rhythm';",
       "export * as loader from './src/game/engine/loader';",
+      "export * as chart from './src/game/chart';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',

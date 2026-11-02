@@ -6,7 +6,7 @@
 // Serves dist/ with the headers from vercel.json (including the CSP), then drives
 // the real bundle in headless Chrome: load progress → ready, live region, settings
 // (mute, remap, persistence across reload), a remapped Street Strut run with pause,
-// Rhythm Royalty, stage-card alt text, no console/CSP errors, and immutable hashed
+// Rhythm Royalty (chart chooser), stage-card alt text, no console/CSP errors, and immutable hashed
 // assets. If no browser is found it prints SKIP and exits 0.
 //
 // CI stays unit-only (`npm run check`): a headless browser + audio/timing on shared
@@ -138,13 +138,16 @@ try {
     assert.match(await mode(), /mode-strut/);
   });
 
-  await step('rhythm royalty starts', async () => {
+  await step('rhythm royalty chart chooser starts hard and remembers it', async () => {
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /^(MENU|QUIT|EXIT)/ }).first().click().catch(() => {});
     await page.goto(origin + '/');
     await ready();
     await page.getByRole('button', { name: /RHYTHM ROYALTY/ }).click();
+    await page.getByRole('button', { name: /^HARD/ }).click();
     await page.waitForFunction(() => document.querySelector('.shell')?.className.includes('mode-rhythm'));
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('moss-stomper-save') ?? '{}').difficulty);
+    assert.equal(saved, 'hard');
     await page.waitForTimeout(1500);
     await shot(page, '05-rhythm');
   });

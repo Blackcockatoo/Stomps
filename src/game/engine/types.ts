@@ -9,6 +9,9 @@ export type RunKind = "free" | "route" | "practice";
 
 export type ResultStats = {
   kind?: "rhythm" | "route";
+  difficulty?: "easy" | "normal" | "hard";
+  /** Bonus-door segments cleared during the run. */
+  bonus?: number;
   seconds?: number;
   personalBest?: number;
   newRecord?: boolean;
