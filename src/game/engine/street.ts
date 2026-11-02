@@ -4,9 +4,10 @@ import { assess } from "../mastery";
 import { updateSave } from "../storage";
 import { pointsFor } from "../feel";
 import { flowHit, flowMiss, flowMultiplier, flowName } from "./flow";
-import { ROUTE_PX, STREETS, streetForLap, streetPrefix, streetSolution, streetTechnique, streetX, windowsFor, type StreetQuality, type StreetSpec } from "../route";
+import { ROUTE_PX, STREETS, zoneSample, streetForLap, streetPrefix, streetSolution, streetTechnique, streetX, windowsFor, type StreetQuality, type StreetSpec } from "../route";
 import { GROUND, MOSS_X } from "./types";
 import { BONUS_MULT, bonusViews, tickBonus, tickDoor } from "../bonus";
+import { schoolViews } from "./school";
 
 export function tickStrut(g: Arcade, dt: number) {
   const boosting = g.keys.has("A") && !g.keys.has("C");
@@ -25,6 +26,21 @@ export function tickStrut(g: Arcade, dt: number) {
     step.speed = g.flow / 92;
     step.flip = g.faceLeft;
   }
+  if (g.runKind === "school") {
+    // Street School: only the lesson's cues exist; no door, laps, finish or bests.
+    g.scanStreets();
+    g.flushStreet();
+    g.tickSchool(dt);
+    return;
+  }
+  if (!g.bonus) {
+    const zone = zoneSample(mossWorld(g));
+    if (zone.index !== g.zoneSeen) {
+      g.zoneSeen = zone.index;
+      g.zoneCard = { name: zone.zone.name, at: g.now };
+    }
+  }
+  // Practice is for combos: street props are hidden and never scored there.
   if (g.runKind !== "practice") g.scanStreets();
   g.flushStreet();
   if (g.bonus) {
@@ -102,6 +118,15 @@ export function streetViews(g: Arcade) {
   const moss = g.mossWorld();
   const lap = Math.floor(moss / ROUTE_PX);
   const views: View[] = [];
+  if (g.runKind === "practice" && g.mode !== "menu") return views;
+  if (g.runKind === "school" && g.mode !== "menu") {
+    for (const view of schoolViews(g)) {
+      const win = windowsFor(g.flow, view.spec);
+      if (view.dist > win.telegraph + 420 || view.dist < -win.good - 90) continue;
+      views.push({ ...view, win });
+    }
+    return views;
+  }
   if (g.bonus) {
     for (const view of bonusViews(g)) {
       const win = windowsFor(g.flow, view.spec);
@@ -126,6 +151,10 @@ export function streetViews(g: Arcade) {
 }
 
 export function scanStreets(g: Arcade) {
+  if (g.runKind === "school") {
+    for (const view of schoolViews(g)) scanOne(g, view.key, view.dist, windowsFor(g.flow, view.spec), view.spec);
+    return;
+  }
   if (g.bonus) {
     for (const view of bonusViews(g)) scanOne(g, view.key, view.dist, windowsFor(g.flow, view.spec), view.spec);
     return;
@@ -162,6 +191,7 @@ function scanOne(g: Arcade, key: string, dist: number, win: View["win"], spec: S
     g.calloutLife = 0.95;
     g.groove.miss();
     g.announce("Missed street move. Tap on beat to recover flow.");
+    g.schoolEvent({ type: "miss", id: spec.id });
   }
 }
 
@@ -225,12 +255,13 @@ export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: num
   const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult *
     flowMultiplier(g.flowState) * execution * (closeCall ? 1.15 : 1));
   g.score += points;
-  if (!g.bonus) g.lapHits += 1;
+  if (!g.bonus && g.runKind !== "school") g.lapHits += 1;
   g.meter = Math.min(1, g.meter + (kind === "perfect" ? 0.07 : 0.04));
   g.callout = closeCall ? "CLOSE CALL!" : quality === "technique" ? "SIGNATURE TECHNIQUE!" :
     g.flowState.level > previousLevel ? flowName(g.flowState.level) : mult > 1 ? `${spec.feedback} ×${mult}` : spec.feedback;
   g.announce(`${kind === "perfect" ? "Perfect" : "Good"}: ${spec.feedback.toLowerCase()}${mult > 1 ? `, times ${mult}` : ""}`);
   g.calloutLife = 1.05;
+  g.schoolEvent({ type: "hit", id: spec.id });
   g.popups.push({
     text: `+${points}`,
     life: 0.85,

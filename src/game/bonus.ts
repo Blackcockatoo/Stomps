@@ -84,7 +84,7 @@ export function bonusWorldX(run: BonusRun, index: number) {
 
 /** Called each strut tick on route laps (not practice, not inside the bonus). */
 export function tickDoor(g: Arcade) {
-  if (g.bonus || g.runKind === "practice") return;
+  if (g.bonus || g.runKind === "practice" || g.runKind === "school") return;
   const moss = g.mossWorld();
   const lap = Math.floor(moss / ROUTE_PX);
   const door = doorWorld(lap);

@@ -2,7 +2,8 @@
 import type { Arcade } from "../arcade";
 import { CELL, PLAY_CLIPS, STAGE } from "../clips";
 import { gradeAt, plateWeight } from "../route";
-import { cycleOf, paintBackdrop, paintBonusWorld, paintDoor, paintGlow, paintMarks, paintPips, paintProp, paintStreet } from "../scenery";
+import { cycleOf, paintBackdrop, paintBonusWorld, paintDoor, paintGlow, paintMarks, paintStreet } from "../scenery";
+import { paintCue, paintProp } from "../props";
 import { DOOR_HINT_PX, doorOpen, doorWorld, pierCrown, GOLDEN_MULT } from "../bonus";
 import { GROUND, H, W } from "./types";
 
@@ -135,6 +136,26 @@ export function drawWorld(g: Arcade, front: boolean) {
   ctx.beginPath();
   ctx.ellipse(g.mossX(), GROUND + 3, 28, 5, 0, 0, Math.PI * 2);
   ctx.fill();
+  drawBeatPulse(g);
+}
+
+/** Beat pulse under Moss in strut modes: a ring that blooms on each beat (gold while recovering). */
+export function drawBeatPulse(g: Arcade) {
+  if (g.mode !== "strut" || !g.groove.running || g.bonus) return;
+  const ctx = g.ctx2d;
+  const beat = g.groove.beatDur;
+  const phase = ((g.songTime() % beat) + beat) % beat / beat;
+  const recovering = g.flowState.recoveryUntil > g.now;
+  const strength = 1 - phase;
+  ctx.save();
+  ctx.strokeStyle = recovering ? "#f5c518" : "#64e2ed";
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = (recovering ? 0.85 : 0.5) * strength * strength;
+  const grow = g.reducedMotion ? 0 : phase * 12;
+  ctx.beginPath();
+  ctx.ellipse(g.mossX(), GROUND + 3, 20 + grow, 4 + grow * 0.25, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 export function drawStreets(g: Arcade) {
@@ -150,15 +171,13 @@ export function drawStreets(g: Arcade) {
       kind = mark.kind;
       age = g.now - mark.at;
     } else if (Math.abs(view.dist) <= view.win.good) kind = "open";
-    paintProp(ctx, view.spec.id, screen, GROUND, age, kind, g.now);
-    if (!mark && view.dist < view.win.telegraph && view.dist > -view.win.good) {
-      paintPips(ctx, view.spec.trigger, screen, GROUND - 112, Math.abs(view.dist) <= view.win.good);
-    }
+    paintProp(ctx, view.spec.id, screen, GROUND, age, kind, g.now, { reducedMotion: g.reducedMotion, birds: g.birdsImg });
+    if (!mark && g.mode === "strut") paintCue(ctx, view.spec.trigger, screen, GROUND - 118, view.dist, view.win, g.now, g.reducedMotion);
   }
 }
 
 function drawDoor(g: Arcade) {
-  if (g.bonus || g.mode === "menu" || g.runKind === "practice") return;
+  if (g.bonus || g.mode === "menu" || g.runKind === "practice" || g.runKind === "school") return;
   for (const lapK of [g.lap - 1, g.lap, g.lap + 1]) {
     if (lapK < 0) continue;
     const screen = doorWorld(lapK) - g.scroll;

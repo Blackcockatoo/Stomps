@@ -1,3 +1,4 @@
+import type { SchoolSnapshot } from "../tutorial";
 import type { PadAction } from "./gamepad";
 import type { Btn } from "../arcade-types";
 import type { ChartNote } from "../chart";
@@ -6,7 +7,7 @@ import type { ClipId, FX } from "../clips";
 export type { Btn };
 export type Mode = "menu" | "strut" | "rhythm" | "pause" | "result";
 export type Judge = "PERFECT" | "FRESH" | "LATE" | "STUMBLED" | "OFF";
-export type RunKind = "free" | "route" | "practice";
+export type RunKind = "free" | "route" | "practice" | "school";
 
 export type ResultStats = {
   kind?: "rhythm" | "route";
@@ -68,6 +69,10 @@ export type Hooks = {
   onCalTap?: (count: number) => void;
   /** Gamepad presses while a menu, result card or panel is up (focus + select, never gameplay). */
   onMenuPad?: (action: PadAction) => void;
+  /** Street School step, instruction and progress changed (null when the lesson closes). */
+  onSchool?: (snapshot: SchoolSnapshot | null) => void;
+  /** Street School finished or was skipped; the engine continues into `then`. */
+  onSchoolDone?: (then: Exclude<RunKind, "school"> | "menu", skipped: boolean) => void;
   onMode: (mode: Mode) => void;
   onResult: (stats: ResultStats) => void;
   onReady: () => void;

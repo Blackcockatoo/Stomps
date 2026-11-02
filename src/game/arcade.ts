@@ -34,6 +34,7 @@ import * as rhythm from "./engine/rhythm";
 import * as motion from "./engine/motion";
 import * as renderer from "./engine/renderer";
 import * as hud from "./engine/hud";
+import * as school from "./engine/school";
 import { installProbe, removeProbe } from "./engine/probe";
 import { emptyArt, loadArt } from "./engine/loader";
 import { GamepadInput, isNav, type PadAction } from "./engine/gamepad";
@@ -169,6 +170,13 @@ export class Arcade {
   view: ViewSpan = FULL_VIEW;
   /** Active bonus-world segment, if Moss went through the door. */
   bonus: BonusRun | null = null;
+  /** Street School lesson, only while runKind is "school". */
+  school: school.SchoolRun | null = null;
+  /** Zone title card: index last entered and when. */
+  zoneSeen = -1;
+  zoneCard: { name: string; at: number } | null = null;
+  /** Objective strip: last values and when each chip changed, for the pop/stamp. */
+  chips = new Map<string, { value: string; at: number }>();
   bonusSerial = 0;
   bonusCleared = 0;
   /** Laps whose door has been passed (entered or shut) / announced. */
@@ -339,6 +347,10 @@ export class Arcade {
   // ── Modes ──────────────────────────────────────────────────────────────
 
   menu() {
+    if (this.school) {
+      this.school = null;
+      this.hooks.onSchool?.(null);
+    }
     this.mode = "menu";
     this.calTaps = null;
     this.groove.stop();
@@ -348,7 +360,14 @@ export class Arcade {
   playStrut(kind: RunKind = "free") {
     this.calTaps = null;
     this.runKind = kind;
-    this.runSeed = kind === "practice" ? 0 : this.routeStarts++ % 2;
+    if (kind !== "school" && this.school) {
+      this.school = null;
+      this.hooks.onSchool?.(null);
+    }
+    this.runSeed = kind === "practice" || kind === "school" ? 0 : this.routeStarts++ % 2;
+    this.zoneSeen = -1;
+    this.zoneCard = null;
+    this.chips.clear();
     this.resetRound();
     this.scroll = 0;
     this.lap = 0;
@@ -371,8 +390,36 @@ export class Arcade {
     this.groove.start();
     this.hooks.onMode("strut");
     this.play([{ clip: "strut", speed: 1, once: false, flip: false }]);
-    this.callout = kind === "route" ? "ONE LAP. MAKE IT YOURS." : kind === "practice" ? "FIND YOUR FOOTWORK" : "DEPARTURE";
+    this.callout = kind === "route" ? "ONE LAP. MAKE IT YOURS." : kind === "practice" ? "FIND YOUR FOOTWORK" : kind === "school" ? "" : "DEPARTURE";
     this.calloutLife = 1.3;
+  }
+
+  /** Street School: the guided first run. `then` is where the player goes after it. */
+  playSchool(then: school.SchoolThen = "menu") {
+    this.playStrut("school");
+    this.school = school.newSchoolRun(then);
+    this.zoneCard = { name: "STREET SCHOOL", at: 0 };
+    this.zoneSeen = 0;
+  }
+
+  /** SKIP on the school card. Marks the tutorial done and continues. */
+  skipSchool() {
+    if (!this.school) return;
+    school.schoolEvent(this, { type: "skip" });
+    school.tickSchool(this, 0);
+  }
+
+  schoolEvent(event: Parameters<typeof school.schoolEvent>[1]) {
+    school.schoolEvent(this, event);
+  }
+
+  tickSchool(dt: number) {
+    school.tickSchool(this, dt);
+  }
+
+  /** True when the first strut click should open Street School first. */
+  get needsSchool() {
+    return !this.save.tutorialDone;
   }
 
   /** Moss's frames for a clip in the chosen skin (cream frames are baked on first use). */

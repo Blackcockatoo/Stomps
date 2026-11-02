@@ -14,7 +14,8 @@ export const REPORT = {
     "The long way home is one scroll: van, crossing, station, strip, pier, home, then the van again. No loading cut. The pavement plate never changes height.",
     "Dawn, day, sunset, and night are a grade on that same geometry. This build cycles them in three minutes so the change is visible. Fourteen minutes is still the schema's long setting.",
     "Twelve street events use the pack's buttons, scores, and words. The window is the authored milliseconds times the live ground speed. A matching tap scores immediately. A chord waits only while a longer open event could still complete.",
-    "A miss pays nothing and does not stumble. People and birds are never damage. A full loop calls the long way home and keeps the score.",
+    "A miss pays nothing, stumbles Moss, halves FLOW and drains 10% of the Quake Drive. A beat-accurate tap inside the 1.8-second recovery window wins most of the FLOW back. People and birds are never damage. A full loop calls the long way home and keeps the score.",
+    "Street School is a one-minute guided first run: stride, stomp on the signal, style, a chord, an intentional miss and recovery, then MOSSQUAKE. It can be skipped and replayed from the cabinet.",
     "Combos, MOSSQUAKE, rhythm, and the foot-locked cycles are the same machine underneath.",
   ],
   limits: [
@@ -28,7 +29,8 @@ export const REPORT = {
   tests: [
     "Route audit: event gaps stay wider than a sprint telegraph plus a good window.",
     "Street Strut leaves the van on the shared pavement. A crossing stomp on the beat scores ON THE BEAT. A+D on the skateboard scores SIDEWINDER. Heel-Toe Hammer still returns to the strut.",
-    "Passing a station event without its button adds a miss, does not take points, and does not play the stumble.",
+    "Passing a station event without its button adds a miss, does not take points, stumbles Moss, halves FLOW and drains 10% Quake. An on-beat tap in the window recovers.",
+    "Street School steps advance only on the right cue; the intentional miss and recovery, skip and the tutorialDone save migration are unit-tested.",
     "Heel-Toe Hammer still fires. Landscape and portrait were checked in the browser, not on a handset.",
     "Bonus door: opens on a full meter or eight hits, scores ×2 inside, and returns to the pier. The cream skin keeps skin, jacket and sneakers untouched.",
     "Browser smoke at 390×844 and 360×740: no sideways scroll, pads at least 44px and clear of the HUD, and the canvas HUD drawn inside the cropped portrait playfield.",

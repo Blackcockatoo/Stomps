@@ -1,5 +1,4 @@
-import type { Btn } from "./arcade-types";
-import { keyLabel } from "./keys";
+import { bakeOutlined } from "./props";
 import {
   CYCLE_SEC,
   PIER_DECK,
@@ -66,7 +65,30 @@ function paintZone(id: ZoneId, width: number) {
   else if (id === "shops") paintShops(mid.ctx, glow.ctx, marks.ctx, width, base);
   else paintPier(mid.ctx, glow.ctx, marks.ctx, width, base);
   r(mid.ctx, 0, base, width, 2, "#1a1420");
-  return { mid: mid.canvas, glow: glow.canvas, marks: marks.canvas };
+  detailZone(mid.ctx, id, width, base);
+  // P4: bake a 1px dark outline, rim light and edge shade onto the scenery so
+  // the blocky silhouettes read as drawn shapes. Falls back to flat art.
+  let lit: HTMLCanvasElement = mid.canvas;
+  try { lit = bakeOutlined(mid.canvas, 0.38, 0.22); } catch { lit = mid.canvas; }
+  return { mid: lit, glow: glow.canvas, marks: marks.canvas };
+}
+
+/** Small hand-placed detail per zone: weeds, bolts, cables, bricks. */
+function detailZone(ctx: Ctx, id: ZoneId, width: number, base: number) {
+  for (let x = 6; x < width; x += 23) {
+    const h = hash(x * 7 + id.length);
+    if (h > 0.55) r(ctx, x, base - 2 - Math.round(h * 4), 1, 2 + Math.round(h * 4), "#3f5a2c");
+    if (h > 0.8) r(ctx, x + 2, base - 3, 2, 3, "#567a3a");
+  }
+  if (id === "tracks" || id === "station") {
+    for (let x = 30; x < width; x += 210) {
+      r(ctx, x, base - 128, 1, 6, "#1a1420");
+      r(ctx, x, base - 124, 210, 1, "rgba(26, 20, 32, 0.7)");
+    }
+  }
+  if (id === "shops") {
+    for (let x = 0; x < width; x += 12) r(ctx, x + ((x / 12) % 2) * 6, base - 6, 5, 1, "rgba(0, 0, 0, 0.25)");
+  }
 }
 
 function paintCaravan(ctx: Ctx, glow: Ctx, marks: Ctx, width: number, base: number) {
@@ -299,150 +321,6 @@ function blitRoute(ctx: Ctx, scroll: number, pick: (id: ZoneId) => HTMLCanvasEle
       if (x > 480 || x + zone.px < 0) continue;
       ctx.drawImage(img, Math.round(x), y);
     }
-  }
-}
-
-export function paintProp(
-  ctx: Ctx,
-  id: StreetId,
-  x: number,
-  ground: number,
-  age: number,
-  kind: "open" | "perfect" | "good" | "miss" | "soon",
-  time: number,
-) {
-  const lift = kind === "perfect" || kind === "good" ? Math.min(1, age) : 0;
-  ctx.save();
-  ctx.translate(Math.round(x), Math.round(ground));
-  if (id === "seagull") {
-    const up = lift * 36;
-    bird(ctx, -16, -46 - up, 0);
-    bird(ctx, 0, -58 - up * 1.2, 1);
-    bird(ctx, 14, -42 - up * 0.8, 2);
-  } else if (id === "puddle") {
-    ctx.fillStyle = "rgba(40, 90, 140, 0.85)";
-    ctx.fillRect(-16, -6, 32, 6);
-    ctx.fillStyle = "rgba(210, 230, 244, 0.8)";
-    ctx.fillRect(-8, -5, 10, 2);
-    if (lift) {
-      ctx.fillStyle = "#f4efe6";
-      ctx.fillRect(-10, -10 - lift * 10, 3, 3);
-      ctx.fillRect(6, -14 - lift * 12, 3, 3);
-    }
-  } else if (id === "skateboard") {
-    ctx.fillStyle = "#c44820";
-    ctx.fillRect(-14, -8, 28, 4);
-    ctx.fillStyle = "#1a1420";
-    ctx.fillRect(-10, -4, 5, 4);
-    ctx.fillRect(6, -4, 5, 4);
-  } else if (id === "sleeping_blanket") {
-    ctx.fillStyle = "#243044";
-    ctx.fillRect(-18, -12, 36, 10);
-    ctx.fillStyle = "#8a4030";
-    ctx.fillRect(-14, -16, 22, 6);
-    ctx.fillStyle = "#d8c8a4";
-    ctx.fillRect(-6, -18, 8, 4);
-  } else if (id === "vape_cloud") {
-    ctx.globalAlpha = Math.max(0.15, 0.75 - lift);
-    ctx.fillStyle = "#c8c4c0";
-    const drift = time * 10 + lift * 16;
-    ctx.fillRect(-8, -28 - drift * 0.2, 14, 10);
-    ctx.fillRect(4, -36 - drift * 0.35, 12, 8);
-    ctx.fillRect(-2, -20, 10, 8);
-  } else if (id === "trolley") {
-    const roll = lift * 10;
-    ctx.translate(roll, 0);
-    ctx.fillStyle = "#8a9298";
-    ctx.fillRect(-12, -28, 24, 18);
-    ctx.fillStyle = "#d0d4d8";
-    ctx.fillRect(-10, -26, 20, 8);
-    ctx.fillStyle = "#1a1420";
-    ctx.fillRect(-10, -8, 5, 5);
-    ctx.fillRect(5, -8, 5, 5);
-    ctx.fillRect(8, -36, 3, 16);
-  } else if (id === "newspaper") {
-    ctx.translate(lift * 22, -lift * 16);
-    ctx.fillStyle = "#f4efe6";
-    ctx.fillRect(-10, -16, 18, 12);
-    ctx.fillStyle = "#8a847c";
-    ctx.fillRect(-7, -13, 12, 2);
-    ctx.fillRect(-7, -9, 8, 2);
-  } else if (id === "busker") {
-    ctx.fillStyle = "#3a2428";
-    ctx.fillRect(-8, -22, 14, 16);
-    ctx.fillStyle = "#1a1420";
-    ctx.fillRect(-4, -30, 10, 8);
-    ctx.fillStyle = "#c4a060";
-    ctx.fillRect(6, -28, 16, 3);
-    ctx.fillRect(18, -32, 3, 10);
-    if (lift) {
-      ctx.fillStyle = "#f5c518";
-      ctx.fillRect(10, -40 - lift * 8, 3, 3);
-      ctx.fillRect(16, -46 - lift * 6, 2, 2);
-    }
-  } else if (id === "commuter") {
-    ctx.translate(lift * -8, lift * -4);
-    ctx.fillStyle = "#243044";
-    ctx.fillRect(-6, -36, 12, 22);
-    ctx.fillStyle = "#1a1420";
-    ctx.fillRect(-4, -44, 10, 8);
-    ctx.fillStyle = "#6a5344";
-    ctx.fillRect(6, -24, 8, 10);
-    ctx.fillStyle = "#2a2428";
-    ctx.fillRect(-5, -14, 5, 12);
-    ctx.fillRect(2, -14, 5, 12);
-  } else if (id === "crossing_signal") {
-    ctx.fillStyle = "#241c20";
-    ctx.fillRect(-2, -78, 4, 76);
-    ctx.fillStyle = "#f4efe6";
-    ctx.fillRect(-10, -78, 20, 16);
-    const blink = Math.sin(time * 8) > 0;
-    ctx.fillStyle = blink ? "#e10600" : "#4a1814";
-    ctx.fillRect(-6, -62, 12, 12);
-    if (kind === "perfect" || kind === "good") {
-      ctx.fillStyle = "#f5c518";
-      ctx.fillRect(-6, -62, 12, 12);
-    }
-  } else if (id === "bin") {
-    ctx.fillStyle = "#2a4034";
-    ctx.fillRect(-10, -32, 20, 26);
-    ctx.fillStyle = "#1a1420";
-    ctx.fillRect(-12, -34, 24, 4);
-    ctx.fillRect(-8, -6, 5, 5);
-    ctx.fillRect(3, -6, 5, 5);
-  } else if (id === "streetlight") {
-    ctx.fillStyle = "#241c18";
-    ctx.fillRect(-2, -92, 4, 90);
-    const on = kind !== "soon" && kind !== "miss";
-    ctx.fillStyle = on || lift ? "#f5c518" : "#3a3428";
-    ctx.fillRect(-8, -98, 18, 8);
-    if (on || lift) {
-      ctx.fillStyle = "rgba(245, 197, 24, 0.25)";
-      ctx.fillRect(-18, -90, 40, 70);
-    }
-  }
-  ctx.restore();
-}
-
-function bird(ctx: Ctx, x: number, y: number, salt: number) {
-  ctx.fillStyle = salt === 1 ? "#f4efe6" : "#d8d2c8";
-  ctx.fillRect(x, y, 12, 4);
-  ctx.fillRect(x - 4, y - 2, 6, 2);
-  ctx.fillRect(x + 8, y - 1, 6, 2);
-}
-
-export function paintPips(ctx: Ctx, trigger: string[], x: number, y: number, hot: boolean) {
-  const colors: Record<string, string> = { A: "#1f8cff", B: "#e10600", C: "#f5c518" };
-  const total = trigger.length * 12 - 4;
-  let px = Math.round(x - total / 2);
-  for (const btn of trigger) {
-    ctx.fillStyle = hot ? (colors[btn] ?? "#fff") : "#2a2428";
-    ctx.fillRect(px, Math.round(y), 8, 8);
-    ctx.fillStyle = "#0c0a0e";
-    ctx.font = "6px 'Press Start 2P', monospace";
-    // Pips are 8px wide: show the first glyph of the bound key.
-    ctx.fillText((btn === "A" || btn === "B" || btn === "C" ? keyLabel(btn as Btn) : btn).slice(0, 1), px + 1, y + 7);
-    px += 12;
   }
 }
 
