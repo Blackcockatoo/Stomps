@@ -1,3 +1,5 @@
+import type { Btn } from "./arcade-types";
+import { KEY_LABEL } from "./keys";
 import {
   CYCLE_SEC,
   ROUTE_PX,
@@ -380,7 +382,7 @@ export function paintPips(ctx: Ctx, trigger: string[], x: number, y: number, hot
     ctx.fillRect(px, Math.round(y), 8, 8);
     ctx.fillStyle = "#0c0a0e";
     ctx.font = "6px 'Press Start 2P', monospace";
-    ctx.fillText(btn, px + 1, y + 7);
+    ctx.fillText(KEY_LABEL[btn as Btn] ?? btn, px + 1, y + 7);
     px += 12;
   }
 }

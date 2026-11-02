@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* Self-hosted pixel fonts (SIL OFL 1.1, see public/fonts/OFL-*.txt). Latin subset. */
+@font-face {
+  font-family: "Press Start 2P";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/press-start-2p-latin-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Silkscreen";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/silkscreen-latin-400.woff2") format("woff2");
+}
+
 @theme {
   --color-bg: #0c0a0e;
   --color-surface: #161018;
@@ -342,7 +359,9 @@
 }
 
 /* Neon Strut cabinet: ink, phosphor and red enamel. */
-:root { --color-bg:#090e13; --color-surface:#121d26; --color-border:#2a4049; --color-muted:#a9bdc3; --color-stride:#64e2ed; --color-primary:#ef4739; --font-display:ui-monospace,monospace; --font-sans:ui-monospace,monospace; }
+:root { --color-bg:#090e13; --color-surface:#121d26; --color-border:#2a4049; --color-muted:#a9bdc3; --color-stride:#64e2ed; --color-primary:#ef4739; --font-display:"Press Start 2P",ui-monospace,monospace; --font-sans:"Silkscreen",ui-monospace,monospace; }
+/* Pixel fonts ship a single weight; never fake bold/italic on them. */
+body { font-synthesis:none; }
 .shell { grid-template-rows:48px minmax(0,1fr) auto; background:var(--color-bg); padding:0 max(0px,env(safe-area-inset-right)) 0 max(0px,env(safe-area-inset-left)); }
 .cabinet-header { display:flex; align-items:center; justify-content:space-between; padding:0 24px; font-size:11px; letter-spacing:.16em; border-bottom:1px solid var(--color-border); color:var(--color-muted); }
 .cabinet-header b { color:var(--color-primary); font-size:20px; letter-spacing:-.08em; margin-right:12px; }

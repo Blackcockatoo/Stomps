@@ -90,7 +90,7 @@ export const PLAY_CLIPS: Record<ClipId, ClipInfo> = {
     label: "Spin Step",
     frames: 6,
     fps: 13,
-    note: "Profile, turn, back view, return. B+C.",
+    note: "Profile, turn, back view, return. S+D.",
     src: (i) => play("spin", i),
   },
   slide: {

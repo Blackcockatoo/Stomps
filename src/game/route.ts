@@ -1,4 +1,5 @@
 import type { Btn } from "./arcade-types";
+import { keysLabel } from "./keys";
 
 /**
  * THE LONG WAY HOME.
@@ -284,10 +285,9 @@ export function triggerKey(btns: Btn[]) {
   return [...btns].sort().join("+");
 }
 
+/** Player-facing label for a trigger, using physical keys (A/S/D). */
 export function triggerLabel(btns: Btn[]) {
-  return btns
-    .map((btn) => (btn === "A" ? "A" : btn === "B" ? "B" : "C"))
-    .join("+");
+  return keysLabel(btns, "+");
 }
 
 function clamp(n: number, min: number, max: number) {
