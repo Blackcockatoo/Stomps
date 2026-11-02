@@ -147,6 +147,23 @@ test('gamepad drives the arcade like the keyboard', () => {
   assert.deepEqual(held, [['A', true], ['A', false]]);
 });
 
+test('in the menu the gamepad drives focus, not the game', () => {
+  const menu = [];
+  const a = make({ onMenuPad: (action) => menu.push(action) });
+  a.mode = 'menu';
+  let script = [];
+  a.pad = { poll: (edge) => script.forEach(([act, d]) => edge(act, d)), reset() {} };
+  script = [['down', true], ['A', true]];
+  a.pollPads();
+  script = [['A', false], ['B', true]];
+  a.pollPads();
+  assert.deepEqual(menu, ['down', 'A', 'B'], 'presses (not releases) reach the menu');
+  assert.ok(!a.keys.has('A'), 'no stride from the menu');
+  assert.equal(a.mode, 'menu');
+  assert.equal(game.gamepad.PAD_MAP[12], 'up');
+  assert.equal(game.gamepad.PAD_MAP[15], 'right');
+});
+
 test('asset preload plan is priority ordered: stage + strut + notes first, fx last', () => {
   const plan = game.loader.assetPlan();
   const tiers = plan.map((j) => j.priority);

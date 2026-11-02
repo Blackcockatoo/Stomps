@@ -5,6 +5,9 @@ import { positionX, visibleSpan } from "@/game/view";
 import { Arcade, COMBOS, CALIBRATION_MIN_TAPS, CALIBRATION_WARMUP, type Btn, type Calibration, type Mode, type ResultStats, type LiveHud } from "@/game/arcade";
 import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, type ClipInfo } from "@/game/clips";
 import { ROUTE_CARDS } from "@/game/route";
+import { PROMO } from "@/game/promo";
+import { nearest, type Box, type NavDir } from "@/game/menu-nav";
+import type { PadAction } from "@/game/engine/gamepad";
 import { REPORT } from "@/game/report";
 import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
 import { DEFAULT_KEYS, type KeyMap, type Skin } from "@/game/storage";
@@ -15,6 +18,40 @@ type AudioPrefs = { volume: number; muted: boolean };
 /** Taps collected per calibration attempt (the first CALIBRATION_WARMUP are ignored). */
 const CAL_TAPS = 12;
 const ALL: Btn[] = ["A", "B", "C"];
+const ARROWS: Record<string, NavDir> = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+
+/** Focusable controls in whatever menu surface is up (a panel wins over the card). */
+function navTargets(): HTMLElement[] {
+  const scope =
+    document.querySelector<HTMLElement>(".stage .sheet") ??
+    document.querySelector<HTMLElement>(".stage .overlay") ??
+    document.querySelector<HTMLElement>(".stage .attract-screen");
+  if (!scope) return [];
+  return Array.from(scope.querySelectorAll<HTMLElement>("button:not(:disabled), input, select")).filter((el) => el.getClientRects().length > 0);
+}
+
+const boxOf = (el: Element): Box => {
+  const r = el.getBoundingClientRect();
+  return { x: r.left, y: r.top, w: r.width, h: r.height };
+};
+
+/** Arrow keys / D-pad: move focus to the nearest control that way, with a visible cue. */
+function moveFocus(dir: NavDir) {
+  document.documentElement.dataset.nav = "on";
+  const items = navTargets();
+  if (!items.length) return;
+  const current = document.activeElement;
+  const index = current instanceof HTMLElement ? items.indexOf(current) : -1;
+  if (index < 0) {
+    items[0]!.focus();
+    return;
+  }
+  const others = items.filter((_, i) => i !== index);
+  const pick = nearest(boxOf(current as HTMLElement), others.map(boxOf), dir);
+  if (pick < 0) return;
+  others[pick]!.focus();
+  others[pick]!.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
 
 const PADS: { id: Btn; name: string; idle: string; down: string; cls: string }[] = [
   { id: "A", name: "STRIDE", idle: UI.aIdle, down: UI.aDown, cls: "a" },
@@ -47,6 +84,9 @@ export function MossApp() {
   const [offset, setOffset] = useState(0);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [skin, setSkin] = useState<Skin>("classic");
+  /** Title screen: shown once per load, dismissed by any tap, key or pad button. */
+  const [attract, setAttract] = useState(true);
+  const uiRef = useRef({ attract: true, panel: "none" as Panel, onPad: (_action: PadAction) => {}, dismiss: () => {}, close: () => {} });
   /** Which action is waiting for a new key (key remap), if any. */
   const [capture, setCapture] = useState<Btn | null>(null);
   const captureRef = useRef<Btn | null>(null);
@@ -86,6 +126,7 @@ export function MossApp() {
       onAnnounce: announce,
       onHeld: (btn, down) => setHeld((prev) => ({ ...prev, [btn]: down })),
       onCalTap: (count) => onCalTap(count),
+      onMenuPad: (action) => uiRef.current.onPad(action),
     });
     arcadeRef.current = arcade;
     const measure = () => {
@@ -123,6 +164,28 @@ export function MossApp() {
         if (event.type === "keydown" && !event.repeat) tapCalibration();
         return;
       }
+      if (event.type === "keydown" && (arcade.mode === "menu" || arcade.mode === "result")) {
+        const ui = uiRef.current;
+        if (ui.attract && arcade.mode === "menu" && ui.panel === "none") {
+          if (!["Tab", "Shift", "Control", "Alt", "Meta"].includes(event.key)) {
+            event.preventDefault();
+            ui.dismiss();
+          }
+          return;
+        }
+        const dir = ARROWS[event.code];
+        const el = document.activeElement;
+        if (dir && !(el instanceof HTMLInputElement || el instanceof HTMLSelectElement)) {
+          event.preventDefault();
+          moveFocus(dir);
+          return;
+        }
+        if (event.code === "Escape" && ui.panel !== "none") {
+          event.preventDefault();
+          ui.close();
+          return;
+        }
+      }
       if (event.type === "keydown") {
         if (event.code === "Escape") {
           event.preventDefault();
@@ -148,7 +211,9 @@ export function MossApp() {
         if (arcade.mode === "strut" || arcade.mode === "rhythm") arcade.togglePause();
       }
     };
+    const onPointer = () => { delete document.documentElement.dataset.nav; };
     window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("keyup", onKey);
     window.addEventListener("blur", release);
@@ -158,6 +223,7 @@ export function MossApp() {
       arcade.destroy();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
       window.removeEventListener("keyup", onKey);
       window.removeEventListener("blur", release);
     };
@@ -216,6 +282,34 @@ export function MossApp() {
     setCapture(null);
     setPanel("none");
   }
+
+  function dismissAttract() {
+    arcadeRef.current?.groove.unlock();
+    setAttract(false);
+  }
+
+  /** Gamepad while a menu is up: D-pad moves focus, A / Start selects, B backs out of a panel. */
+  function onMenuPad(action: PadAction) {
+    if (attract && mode === "menu" && panel === "none") {
+      dismissAttract();
+      return;
+    }
+    if (action === "up" || action === "down" || action === "left" || action === "right") {
+      moveFocus(action);
+      return;
+    }
+    if (action === "A" || action === "pause") {
+      const el = document.activeElement;
+      if (el instanceof HTMLButtonElement && el.closest(".stage") && !el.disabled) el.click();
+      else {
+        document.documentElement.dataset.nav = "on";
+        navTargets()[0]?.focus();
+      }
+      return;
+    }
+    if (action === "B" && panel !== "none") closePanel();
+  }
+  uiRef.current = { attract, panel, onPad: onMenuPad, dismiss: dismissAttract, close: closePanel };
 
   function go(next: "strut" | "rhythm", kind: "free" | "route" | "practice" = "free", chart: Difficulty = difficulty) {
     setRunKind(kind);
@@ -291,8 +385,32 @@ export function MossApp() {
           </button>
         </div>
 
-        {mode === "menu" && panel === "none" ? (
-          <div className="overlay">
+        {mode === "menu" ? (
+          <div className={`menu-hero ${attract ? "attract" : ""}`} aria-hidden="true">
+            <picture>
+              <source media="(orientation: portrait)" srcSet={PROMO.splash} />
+              <img src={PROMO.pier} alt="" />
+            </picture>
+          </div>
+        ) : null}
+
+        {mode === "menu" && panel === "none" && attract ? (
+          <div className="attract-screen">
+            <h1 className="brand attract-title">
+              MOSS STOMPER
+              <small>BLUE $NAKE STUDIO · FRANKSTON AFTER HOURS</small>
+            </h1>
+            <button type="button" className="attract-gate" autoFocus onClick={dismissAttract}>
+              <span className="attract-pulse">TAP TO START</span>
+              <small>ANY KEY · ENTER · START ON A PAD</small>
+            </button>
+            {!ready && !error ? <p className="attract-load" aria-live="polite">Loading the block… {loadPct}%</p> : null}
+            {error ? <p className="attract-load">{error}</p> : null}
+          </div>
+        ) : null}
+
+        {mode === "menu" && panel === "none" && !attract ? (
+          <div className="overlay menu-card">
             <div>
               <p className="eyebrow">FRANKSTON AFTER HOURS / B$S ARCADE</p>
               <h1 className="brand">
@@ -300,12 +418,6 @@ export function MossApp() {
                 <small>BLUE $NAKE STUDIO</small>
                 <em>STRIDE. STOMP. ATTITUDE.</em>
               </h1>
-              <p className="hint-row">
-                Own the pavement. Chain your swagger. Time the stomp.
-                Three buttons. One long way home.
-                {routeBest ? ` Best home run ${routeBest}.` : ""}
-                {best.strut || best.rhythm ? ` Best strut ${best.strut}. Best royalty ${best.rhythm}.` : ""}
-              </p>
               {!ready && !error ? (
                 <div className="load-row">
                   <p className="hint-row">Loading the block… {loadPct}%</p>
@@ -315,31 +427,34 @@ export function MossApp() {
                 </div>
               ) : null}
               {error ? <p className="hint-row">{error}</p> : null}
-              <div className="menu-actions">
-                <button type="button" className="cab-btn primary route-start" disabled={!ready} onClick={() => go("strut", "route")}>
-                  THE LONG WAY HOME <small>ONE ROUTE · YOUR BEST FOOTWORK</small>
+              <div className="mode-row" role="group" aria-label="Play">
+                <button type="button" className="mode-tile route-start" autoFocus disabled={!ready} onClick={() => go("strut", "route")}>
+                  <img src={PROMO.pier} alt="" />
+                  <span className="mode-name">THE LONG WAY HOME</span>
+                  <small>ONE ROUTE · YOUR BEST FOOTWORK</small>
+                  {routeBest ? <b className="best-badge">BEST {routeBest.toLocaleString()}</b> : null}
                 </button>
-                <button type="button" className="cab-btn primary" disabled={!ready} onClick={() => go("strut")}>
-                  STREET STRUT / FREE PLAY
+                <button type="button" className="mode-tile" disabled={!ready} onClick={() => go("strut")}>
+                  <img src={PROMO.strip} alt="" />
+                  <span className="mode-name">STREET STRUT</span>
+                  <small>FREE PLAY · NO FINISH LINE</small>
+                  {best.strut ? <b className="best-badge">BEST {best.strut.toLocaleString()}</b> : null}
                 </button>
-                <button type="button" className="cab-btn gold" disabled={!ready} onClick={() => setPanel("rhythm")}>
-                  RHYTHM ROYALTY <small>{DIFFICULTY_INFO[difficulty].label}</small>
+                <button type="button" className="mode-tile gold" disabled={!ready} onClick={() => setPanel("rhythm")}>
+                  <img src={PROMO.royalRave} alt="" />
+                  <span className="mode-name">RHYTHM ROYALTY</span>
+                  <small>{DIFFICULTY_INFO[difficulty].label} · 104 BPM</small>
+                  {best.rhythm ? <b className="best-badge">BEST {best.rhythm.toLocaleString()}</b> : null}
                 </button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("lab")}>
-                  ANIMATION LAB
-                </button>
-                <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "practice")}>FOOTWORK PRACTICE</button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("notes")}>
-                  FIELD NOTES
-                </button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("stages")}>
-                  STAGE CARDS
-                </button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("hints")}>
-                  COMBOS
-                </button>
+              </div>
+              <div className="menu-secondary" role="group" aria-label="More">
+                <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "practice")}>PRACTICE</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("hints")}>COMBOS</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("stages")}>STAGE CARDS</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("lab")}>LAB</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("notes")}>NOTES</button>
                 <button type="button" className="cab-btn" onClick={() => setPanel("settings")}>
-                  SOUND, SYNC &amp; KEYS
+                  SETTINGS<span className="sr-only"> · SOUND, SYNC &amp; KEYS</span>
                 </button>
               </div>
             </div>
@@ -362,7 +477,7 @@ export function MossApp() {
                 <small>{result.stumble ? "Next run: watch the cue, then plant the action as it reaches you." : "Next run: link your signature moves between the cues."}</small>
               </div>
               <div className="menu-actions">
-                <button type="button" className="cab-btn primary" onClick={() => result.kind === "route" ? go("strut", "route") : go("rhythm")}>
+                <button type="button" className="cab-btn primary" autoFocus onClick={() => result.kind === "route" ? go("strut", "route") : go("rhythm")}>
                   RUN IT BACK
                 </button>
                 <button type="button" className="cab-btn" onClick={() => arcadeRef.current?.menu()}>
@@ -509,11 +624,12 @@ function Hints() {
         <li>{keysLabel(["B", "C"], " + ")} together — Spin Stomp</li>
         <li>{keysLabel(["A", "B", "C"], " + ")} with a full meter — MOSSQUAKE</li>
       </ul>
+      <img className="hint-art" src={PROMO.mossquake} alt="Mossquake: Moss stomps and a shock ring cracks the pavement" />
       <p>
         On-beat hits pay more. Repeating one button pays less each time, and the street does not stop. Chords only
         count when the buttons land together. Rhythm has SYNC − / + if the notes feel early or late, and Sound, Sync
         &amp; Keys has a tap-along calibration and key remapping. A gamepad works too: bottom face button strides, right
-        stomps, left styles, top unleashes MOSSQUAKE, Start pauses.
+        stomps, left styles, top unleashes MOSSQUAKE, Start pauses. In menus the D-pad moves focus, bottom face or Start selects, right backs out.
       </p>
       <h3>THE LONG WAY HOME</h3>
       <p>
@@ -537,19 +653,22 @@ function Chooser(props: { current: Difficulty; ready: boolean; onPick: (difficul
     <div className="chooser">
       <h2>RHYTHM ROYALTY</h2>
       <p>Pick a chart. Your pick is remembered for next time. Same groove, same 104 BPM.</p>
-      <div className="menu-actions" role="group" aria-label="Chart difficulty">
-        {DIFFICULTIES.map((level) => (
+      <div className="chart-cards" role="group" aria-label="Chart difficulty">
+        {DIFFICULTIES.map((level, index) => (
           <button
             key={level}
             type="button"
-            className={`cab-btn ${level === props.current ? "gold" : ""}`}
+            className={`chart-card chart-${level} ${level === props.current ? "picked" : ""}`}
             disabled={!props.ready}
             autoFocus={level === props.current}
             aria-describedby={`chart-${level}`}
             onClick={() => props.onPick(level)}
           >
-            {DIFFICULTY_INFO[level].label}
-            {level === props.current ? " · LAST PICK" : ""}
+            <span className="chart-name">{DIFFICULTY_INFO[level].label}</span>
+            <span className="chart-pips" aria-hidden="true">
+              {DIFFICULTIES.map((_, pip) => <i key={pip} className={pip <= index ? "on" : ""} />)}
+            </span>
+            {level === props.current ? <b className="best-badge">LAST PICK</b> : null}
             <small id={`chart-${level}`}>{DIFFICULTY_INFO[level].blurb}</small>
           </button>
         ))}
@@ -608,11 +727,15 @@ function Settings(props: {
       </div>
 
       <h3>LOOK</h3>
-      <p>Moss&apos;s hoodie. Cream is recoloured live from the original red frames.</p>
-      <div className="setting-row" role="group" aria-label="Hoodie">
+      <p>
+        Moss&apos;s hoodie. Cream is recoloured live from the original red frames. The previews are promo art; in play
+        Moss keeps the sprite frames.
+      </p>
+      <div className="look-row" role="group" aria-label="Hoodie">
         {(["classic", "cream"] as const).map((option) => (
-          <button key={option} type="button" className="cab-btn" aria-pressed={props.skin === option} onClick={() => props.onSkin(option)}>
-            {option === "classic" ? "RED HOODIE" : "CREAM HOODIE"}
+          <button key={option} type="button" className="look-card" aria-pressed={props.skin === option} onClick={() => props.onSkin(option)}>
+            <img src={option === "classic" ? PROMO.damoRed : PROMO.damoCream} alt="" />
+            <span>{option === "classic" ? "RED HOODIE" : "CREAM HOODIE"}</span>
           </button>
         ))}
       </div>
@@ -722,22 +845,32 @@ function Stages() {
       <h2>STAGE CARDS</h2>
       <p>
         The route is one continuous pavement: van, crossing, station, strip, pier, home. Time of day is a separate
-        grade. The stills below come from the world pack; the playfield is drawn by the engine from the same layout.
+        grade. The first stills are promo art; the world pack concepts follow. The playfield is drawn by the engine from
+        the same layout.
       </p>
-      {ROUTE_CARDS.map((stage) => (
-        <div key={stage.id}>
-          <h3>{stage.name}</h3>
-          {stage.src ? <img className="stage-card" src={stage.src} alt={`${stage.name}: route layout reference still`} /> : null}
-          <p>{stage.note}</p>
-        </div>
-      ))}
-      {STAGE_CONCEPTS.filter((stage) => !ROUTE_CARDS.some((card) => card.src === stage.src)).map((stage) => (
-        <div key={stage.id}>
-          <h3>{stage.name}</h3>
-          <img className="stage-card" src={stage.src} alt={`${stage.name}: world pack concept still`} />
-          <p>{stage.note}</p>
-        </div>
-      ))}
+      <div className="stage-gallery">
+        {ROUTE_CARDS.map((stage) => (
+          <figure key={stage.id} className={stage.src ? "" : "text-card"}>
+            {stage.src ? <img className="stage-card" src={stage.src} alt={`${stage.name}: promo still`} loading="lazy" /> : null}
+            <figcaption>
+              <h3>{stage.name}</h3>
+              <p>{stage.note}</p>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+      <h2>WORLD PACK CONCEPTS</h2>
+      <div className="stage-gallery">
+        {STAGE_CONCEPTS.filter((stage) => !ROUTE_CARDS.some((card) => card.src === stage.src)).map((stage) => (
+          <figure key={stage.id}>
+            <img className="stage-card" src={stage.src} alt={`${stage.name}: world pack concept still`} loading="lazy" />
+            <figcaption>
+              <h3>{stage.name}</h3>
+              <p>{stage.note}</p>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
     </>
   );
 }
