@@ -626,18 +626,22 @@ body > div { height: 100%; }
    The pixel fonts only carry Latin glyphs, so Japanese and Hindi menus fall
    back to the system's CJK / Devanagari faces with the tracking removed
    (spaced-out Devanagari breaks its conjuncts). */
-.lang-row { display: flex; align-items: center; gap: 4px; width: max-content; max-width: 100%; margin: 12px auto 0; padding: 3px 3px 3px 9px; border: 1px solid var(--color-stride); border-radius: 999px; background: rgba(0, 0, 0, .55); }
-.lang-globe { flex: none; margin-right: 3px; color: var(--color-stride); }
-.lang-btn { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; min-width: 56px; padding: 3px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--color-ink, #f3f0e6); cursor: pointer; line-height: 1.1; }
-.lang-btn b { font: 700 13px/1.15 system-ui, "Hiragino Sans", "Noto Sans JP", "Noto Sans Devanagari", "Nirmala UI", sans-serif; letter-spacing: 0; }
-.lang-btn small { margin-top: 2px; font: 600 8px/1 system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
-.lang-btn:hover { background: rgba(255, 255, 255, .08); }
-.lang-btn[aria-pressed="true"] { background: var(--color-stride); color: #050505; }
-.lang-btn[aria-pressed="true"] small { opacity: .85; }
-.lang-btn[aria-pressed="true"]::after { content: "✓"; position: absolute; top: -4px; right: -3px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--color-stride); background: #050505; color: var(--color-stride); font: 700 9px/1 system-ui, sans-serif; }
-.lang-btn:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
-.lang-top { margin: 0 auto 10px; }
-.attract-screen .lang-attract { margin: 0 auto 14px; flex: none; }
+/* ── Language menu: a small globe in the corner that opens EN / 日本語 / हिन्दी ── */
+.lang-menu { position: relative; flex: none; --lm-accent: #e7c767; }
+.lang-menu-btn { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 1px solid color-mix(in srgb, var(--lm-accent) 28%, transparent); border-radius: 50%; background: rgba(5, 6, 8, .6); color: color-mix(in srgb, var(--lm-accent) 62%, transparent); cursor: pointer; transition: color .15s, border-color .15s, background .15s; -webkit-tap-highlight-color: transparent; }
+.lang-menu-btn:hover, .lang-menu.is-open .lang-menu-btn { color: var(--lm-accent); border-color: color-mix(in srgb, var(--lm-accent) 65%, transparent); background: rgba(5, 6, 8, .85); }
+.lang-menu-btn:focus { outline: none; }
+.lang-menu-btn:focus-visible { color: var(--lm-accent); outline: 2px solid var(--lm-accent); outline-offset: 2px; }
+.lang-menu-list { position: absolute; top: calc(100% + 6px); right: 0; z-index: 50; display: flex; flex-direction: column; gap: 2px; min-width: 156px; padding: 5px; border: 1px solid color-mix(in srgb, var(--lm-accent) 45%, transparent); border-radius: 10px; background: rgba(5, 6, 8, .97); box-shadow: 0 16px 36px -12px rgba(0, 0, 0, .85); text-align: left; }
+.lang-menu-list[hidden] { display: none; }
+.lang-menu-item { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 42px; width: 100%; padding: 4px 32px 4px 11px; border: 0; border-radius: 7px; background: transparent; color: #f3f0e6; cursor: pointer; line-height: 1.15; text-align: left; }
+.lang-menu-item b { font: 700 14px/1.2 system-ui, "Hiragino Sans", "Noto Sans JP", "Noto Sans Devanagari", "Nirmala UI", sans-serif; letter-spacing: 0; text-transform: none; }
+.lang-menu-item small { margin-top: 2px; font: 600 9px/1 system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; opacity: .65; }
+.lang-menu-item:hover, .lang-menu-item:focus-visible { background: color-mix(in srgb, var(--lm-accent) 14%, transparent); color: var(--lm-accent); outline: none; }
+.lang-menu-item:focus-visible { box-shadow: inset 0 0 0 2px var(--lm-accent); }
+.lang-menu-item[aria-pressed="true"] { color: var(--lm-accent); }
+.lang-menu-item[aria-pressed="true"]::after { content: "✓"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font: 700 13px/1 system-ui, sans-serif; }
+.topbar .lang-menu { --lm-accent: var(--color-gold, #e7c767); align-self: center; }
 html:lang(ja) .shell,
 html:lang(hi) .shell {
   --font-display: "Press Start 2P", "Hiragino Sans", "Noto Sans JP", "Noto Sans CJK JP", "Noto Sans Devanagari", "Nirmala UI", "Yu Gothic", system-ui, sans-serif;
