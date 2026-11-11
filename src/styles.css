@@ -621,3 +621,37 @@ body > div { height: 100%; }
   .school-card h2 { animation: none; }
   .school-pips i { transition: none; }
 }
+
+/* ── Language (EN / 日本語 / हिन्दी) ─────────────────────────────────────
+   The pixel fonts only carry Latin glyphs, so Japanese and Hindi menus fall
+   back to the system's CJK / Devanagari faces with the tracking removed
+   (spaced-out Devanagari breaks its conjuncts). */
+.lang-row { display: flex; align-items: center; gap: 4px; width: max-content; max-width: 100%; margin: 12px auto 0; padding: 3px 3px 3px 9px; border: 1px solid var(--color-stride); border-radius: 999px; background: rgba(0, 0, 0, .55); }
+.lang-globe { flex: none; margin-right: 3px; color: var(--color-stride); }
+.lang-btn { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; min-width: 56px; padding: 3px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--color-ink, #f3f0e6); cursor: pointer; line-height: 1.1; }
+.lang-btn b { font: 700 13px/1.15 system-ui, "Hiragino Sans", "Noto Sans JP", "Noto Sans Devanagari", "Nirmala UI", sans-serif; letter-spacing: 0; }
+.lang-btn small { margin-top: 2px; font: 600 8px/1 system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
+.lang-btn:hover { background: rgba(255, 255, 255, .08); }
+.lang-btn[aria-pressed="true"] { background: var(--color-stride); color: #050505; }
+.lang-btn[aria-pressed="true"] small { opacity: .85; }
+.lang-btn[aria-pressed="true"]::after { content: "✓"; position: absolute; top: -4px; right: -3px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--color-stride); background: #050505; color: var(--color-stride); font: 700 9px/1 system-ui, sans-serif; }
+.lang-btn:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.lang-top { margin: 0 auto 10px; }
+.attract-screen .lang-attract { margin: 0 auto 14px; flex: none; }
+html:lang(ja) .shell,
+html:lang(hi) .shell {
+  --font-display: "Press Start 2P", "Hiragino Sans", "Noto Sans JP", "Noto Sans CJK JP", "Noto Sans Devanagari", "Nirmala UI", "Yu Gothic", system-ui, sans-serif;
+  --font-sans: "Silkscreen", "Hiragino Sans", "Noto Sans JP", "Noto Sans CJK JP", "Noto Sans Devanagari", "Nirmala UI", "Yu Gothic", system-ui, sans-serif;
+}
+html:lang(ja) .shell :is(.eyebrow, .brand small, .brand em, .cab-btn, .mode-tile small, .hint-row, .attract-gate small, .icon-btn, .best-badge),
+html:lang(hi) .shell :is(.eyebrow, .brand small, .brand em, .cab-btn, .mode-tile small, .hint-row, .attract-gate small, .icon-btn, .best-badge) { letter-spacing: normal; }
+html:lang(hi) .shell .brand em,
+html:lang(hi) .shell .mode-tile small { line-height: 1.7; }
+/* System CJK / Devanagari faces read smaller than the pixel fonts at the same size. */
+html:lang(ja) .shell :is(.eyebrow, .cab-btn, .mode-tile small, .hint-row, .icon-btn),
+html:lang(hi) .shell :is(.eyebrow, .cab-btn, .mode-tile small, .hint-row, .icon-btn) { font-size: 11px; }
+html:lang(ja) .shell .brand em,
+html:lang(hi) .shell .brand em { font-size: 13px; }
+/* The pixel fonts' wide monospace space splits Hindi words apart, so small
+   Hindi menu text uses the system face outright. */
+html:lang(hi) .shell :is(.eyebrow, .brand em, .cab-btn, .mode-tile small, .hint-row, .icon-btn, .attract-gate) { font-family: "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari", system-ui, sans-serif; }
