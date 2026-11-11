@@ -362,7 +362,7 @@ export function MossApp() {
         <div className="crt" aria-hidden="true" />
         {playing ? <>
           <div className="portrait-title"><span>B$S / STREET SYSTEMS</span><strong>{mode === "rhythm" ? "FIND YOUR FREQUENCY." : "OWN THE PAVEMENT."}</strong></div>
-          <div className={`playguide ${runKind === "practice" || runKind === "school" ? "practice-hidden" : ""}`}><span className="eyebrow">{mode === "rhythm" ? "STAY IN THE POCKET" : "BUILD YOUR SIGNATURE"}</span><p>{mode === "rhythm" ? "Match each note at the line. Hold the long notes. Keep the groove." : `Hold ${keyLabel("A")} to stride. Tap ${keyLabel("B")} to plant it. Add ${keyLabel("C")} for attitude.`}</p><div><span>{keysLabel(["A", "A", "B"], " · ")}<b>HEEL-TOE HAMMER</b></span><span>{keysLabel(["C", "A", "B"], " · ")}<b>FRANKSTON SHUFFLE</b></span></div><small>{allKeys} / FULL STYLE = MOSSQUAKE</small></div>
+          <div className={`playguide ${runKind === "practice" || runKind === "school" ? "practice-hidden" : ""}`}><span className="eyebrow">{mode === "rhythm" ? "STAY IN THE POCKET" : "BUILD YOUR SIGNATURE"}</span><p>{mode === "rhythm" ? "Match each note at the line. Hold the long notes. Keep the groove." : `Hold ${keyLabel("A")} to stride. Tap ${keyLabel("B")} to plant it. Add ${keyLabel("C")} for attitude.`}</p><div><span>{keysLabel(["A", "A", "B"], " · ")}<b>HEEL-TOE HAMMER</b></span><span>{keyLabel("B")} ON THE BOARD TAIL<b>SK8 STOMP · FLIP ON THE BEAT</b></span></div><small>{allKeys} / FULL STYLE = MOSSQUAKE</small></div>
         </> : null}
         <div className="topbar">
           {playing ? (
@@ -494,6 +494,7 @@ export function MossApp() {
               <div className="result-detail">
                 <strong>{result.newRecord ? "PERSONAL BEST / " : ""}{result.perfect + result.fresh === 0 ? "FIND YOUR FEET" : result.stumble === 0 ? "CLEAN FOOTWORK" : "KEEP YOUR FLOW"}</strong>
                 <p>{result.kind === "route" ? `${result.perfect} perfect encounters · ${result.fresh} clean · ${result.stumble} missed.${result.bonus ? ` ${result.bonus} bonus world${result.bonus > 1 ? "s" : ""} cleared.` : ""} Home in ${Math.floor((result.seconds ?? 0) / 60)}m ${Math.floor((result.seconds ?? 0) % 60)}s.` : "Hit notes as they reach the line. Keep long notes held until their tail clears."}</p>
+                {result.kind === "route" && result.sk8 ? <p className="sk8-line">SK8 · {result.sk8.tricks} trick{result.sk8.tricks === 1 ? "" : "s"} · best chain {result.sk8.bestChain} · {result.sk8.bails} bail{result.sk8.bails === 1 ? "" : "s"} · {result.sk8.rival === null ? "no rival" : result.sk8.rival ? "rival schooled" : "rival won"} · trick lists {result.sk8.challenges} · secret lines {result.sk8.lines}/{result.sk8.linesTotal}</p> : null}
                 <small>{result.kind === "route" ? `${result.accuracy ?? 0}% execution · ${result.techniqueCount ?? 0}/5 signature techniques · Route ${(result.variant ?? 0) + 1}. ${result.advice ?? "Watch the next cue."}` : result.stumble ? "Next run: watch the cue, then plant the action as it reaches you." : "Next run: link your signature moves between the cues."}</small>
               </div>
               <div className="menu-actions">
@@ -659,6 +660,35 @@ function Hints() {
         count when the buttons land together. Rhythm has SYNC − / + if the notes feel early or late, and Sound, Sync
         &amp; Keys has a tap-along calibration and key remapping. A gamepad works too: bottom face button strides, right
         stomps, left styles, top unleashes MOSSQUAKE, Start pauses. In menus the D-pad moves focus, bottom face or Start selects, right backs out.
+      </p>
+      <h3>SK8 STOMP</h3>
+      <p>
+        Boards lie in the street, tail down. Stomp the tail with {keyLabel("B")} on the beat to pop it under Moss (off
+        the beat and it squirts ahead: chase it and try again). While riding, tap once per beat to flip it:{" "}
+        {keyLabel("A")} kickflip, {keyLabel("B")} heelflip, {keyLabel("C")} pop shove-it. Off the beat you bail and lose
+        the chain. Street cues still count while you ride: hit them with their usual buttons, and missing one bails.
+      </p>
+      <ul>
+        <li>Three PERFECT flips in a row — 360 FLIP</li>
+        <li>Hold a flip button, then let go — MANUAL (50-50 GRIND on a yellow-edged ledge, RAIL GRIND on the pier)</li>
+        <li>Each trick adds to the chain multiplier (up to ×4). The chain banks when the ride rolls out.</li>
+        <li>STYLE meter: mix your tricks to fill it, repeat one and it drains. It scales every chain you land.</li>
+        <li>PERFECT / GREAT / OK: cleaner timing pays more, pops higher and launches props further, everywhere.</li>
+      </ul>
+      <h3>STREET TOYS</h3>
+      <p>Optional, never penalised: ignore them and nothing happens. Play them on the beat (the ring closes on each beat) and they pay.</p>
+      <ul>
+        <li>Shopping trolley — stomp to roll it, stomp again on the beat to skittle it into the wheelie bins</li>
+        <li>Wheelie bin — stomp to flip the lid, stomp again on the next beat for RUBBISH RAIN</li>
+        <li>Pigeons — any tap scatters them; a {keyLabel("B")} stomp on the downbeat (the "1") sends the whole flock</li>
+        <li>Sprinkler — splash for DRIPPING ×1.25 on everything for a few seconds (longer on a PERFECT)</li>
+        <li>Parking meter — keep stomping on each beat for escalating coins; four is the jackpot</li>
+        <li>Rival skater (on the way home) — he plays four tricks, one per beat, then you answer with the same buttons on the same beats. Two rounds. Six of eight beats beats him; an all-PERFECT answer out-tricks him.</li>
+      </ul>
+      <p>
+        Every stage has a TRICK LIST goal on the lime chip (e.g. a 360 flip on the pier, or board → trolley → bins on the
+        strip), and some stages hide a secret best line: the right toys in the right order. Route S ranks need at least
+        one secret line; S++ needs all of them.
       </p>
       <h3>THE LONG WAY HOME</h3>
       <p>

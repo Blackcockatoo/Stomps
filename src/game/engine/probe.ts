@@ -18,6 +18,13 @@ export function installProbe(g: Arcade) {
     /** Street School progress, or null outside the lesson. */
     get school() { return self.school ? { step: self.school.state.index, finished: self.school.state.finished, cues: self.school.cues.length } : null; },
     get score() { return self.score; },
+    /** SK8 STOMP: ride, chain, style, toys near Moss and the rival. */
+    get sk8() {
+      const p = self.p5;
+      return { riding: !!p.sk8.ride, links: p.sk8.ride?.links.length ?? 0, style: Number(p.sk8.style.toFixed(2)), landed: p.sk8.landed,
+        bails: p.sk8.bails, pops: p.pops, squirts: p.squirts, toys: self.stompViews().filter((v) => v.run.kind !== "ledge").length,
+        rival: p.rival ? (p.rival.done ? "done" : "on") : null, lines: p.lines.size, challenges: p.challenges.size };
+    },
     get meter() { return self.meter; },
     get clip() { return self.currentClip(); },
     get frame() { return self.frame; },

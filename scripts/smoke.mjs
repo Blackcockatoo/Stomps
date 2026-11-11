@@ -185,6 +185,16 @@ try {
     assert.match(await mode(), /mode-strut/);
   });
 
+  await step('SK8 STOMP: a board sits at the van; a tail stomp pops it (or squirts it ahead off the beat)', async () => {
+    await page.waitForFunction(() => window.__moss?.mode === 'strut');
+    await page.evaluate(() => window.__moss.seek(420 - 132));
+    await page.waitForFunction(() => (window.__moss?.sk8?.toys ?? 0) >= 1);
+    await page.keyboard.press('KeyS');
+    await page.waitForFunction(() => window.__moss.sk8.pops + window.__moss.sk8.squirts >= 1, null, { timeout: 3000 });
+    await page.waitForTimeout(250);
+    await shot(page, '04b-sk8');
+  });
+
   await step('rhythm royalty chart chooser starts hard and remembers it', async () => {
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /^(MENU|QUIT|EXIT)/ }).first().click().catch(() => {});

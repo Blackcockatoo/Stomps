@@ -17,6 +17,8 @@ export const REPORT = {
     "A miss pays nothing, stumbles Moss, halves FLOW and drains 10% of the Quake Drive. A beat-accurate tap inside the 1.8-second recovery window wins most of the FLOW back. People and birds are never damage. A full loop calls the long way home and keeps the score.",
     "Street School is a one-minute guided first run: stride, stomp on the signal, style, a chord, an intentional miss and recovery, then MOSSQUAKE. It can be skipped and replayed from the cabinet.",
     "Combos, MOSSQUAKE, rhythm, and the foot-locked cycles are the same machine underneath.",
+    "SK8 STOMP: boards in the street pop under Moss on an on-beat tail stomp. Riding, each on-beat tap flips the board (kickflip, heelflip, shove-it by button); three PERFECTs make a 360 flip, a hold-and-release makes a manual or a grind on a ledge or the pier rail. Tricks build a chain multiplier that banks on landing; off the beat bails and loses it. A style meter rewards mixing tricks.",
+    "Street toys (trolley, wheelie bins, pigeons, sprinkler, parking meter) sit between the authored encounters and are optional. Their rings close on the beat. A rival skater meets you on the way home for four bars of call and response.",
   ],
   limits: [
     "Zone buildings are engine-drawn pixel scenery, not the unfinished V0.6 blockouts and not a hand-painted mile of Frankston.",
@@ -25,6 +27,7 @@ export const REPORT = {
     "No recorded soundtrack ships. The cabinet plays one only if a 104 BPM file with its downbeat at 0s is dropped into public/audio; otherwise it is the synth.",
     "The bonus-world door is engine-drawn neon on the existing props: one ×2 segment per lap, opened by a full Quake Drive or eight hits, then back to the pier.",
     "Phone layout was checked at phone viewports in the browser (390×844, 360×740 and landscape), not tapped on a physical handset.",
+    "The board, toys and rival are engine-drawn pixel art in the props style. Moss rides in his idle frames; there is no dedicated skate animation for him yet.",
   ],
   tests: [
     "Route audit: event gaps stay wider than a sprint telegraph plus a good window.",
