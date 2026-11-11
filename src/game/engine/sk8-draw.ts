@@ -43,7 +43,7 @@ export function drawStomps(g: Arcade) {
     if (!label) continue;
     const hot = S.inReach(run, view.dist);
     const screen = run.state === "paying" ? Math.max(g.mossX() + 30, view.x - g.scroll) : view.x - g.scroll;
-    paintBeatCue(ctx, ["B"], screen, GROUND - 92, beatPhase(g, run.kind === "pigeons" ? 4 : 1), hot, g.now, g.reducedMotion, label);
+    paintBeatCue(ctx, ["B"], screen, GROUND - 122, beatPhase(g, run.kind === "pigeons" ? 4 : 1), hot, g.now, g.reducedMotion, label);
   }
 }
 

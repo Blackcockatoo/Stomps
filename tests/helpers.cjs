@@ -51,6 +51,7 @@ buildSync({
       "export * as props from './src/game/props';",
       "export * as sk8 from './src/game/sk8';",
       "export * as stompables from './src/game/stompables';",
+      "export * as stompArt from './src/game/stomp-art';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',

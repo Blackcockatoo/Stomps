@@ -15,19 +15,20 @@ const OUT = "#120c14";
 const DECK: [string, string, string] = ["#0d6b63", "#1fb5a8", "#7ff0e0"];
 const RIVAL_DECK: [string, string, string] = ["#8a1858", "#ff3ea5", "#ffb0dc"];
 
-function boardArt(deck: [string, string, string]): Art {
+/** A ridden board, 2L px long: deck with kicked nose and tail, grip, trucks, yellow wheels. */
+function boardArt(deck: [string, string, string], L = 20): Art {
   const [dark, base, light] = deck;
-  return { w: 34, h: 12, paint: (r, f) => {
-    r(-16, -11, 3, 2, base); r(13, -11, 3, 2, base);
-    r(-14, -10, 28, 3, base);
-    r(-13, -10, 26, 1, "#2a2026");
-    r(-11, -9, 10, 1, light);
-    r(-13, -7, 26, 1, dark);
-    r(-10, -6, 4, 1, "#9aa4ac"); r(6, -6, 4, 1, "#9aa4ac");
-    r(-11, -5, 4, 4, "#f5c518"); r(7, -5, 4, 4, "#f5c518");
-    r(-11, -2, 4, 1, "#b98f10"); r(7, -2, 4, 1, "#b98f10");
+  return { w: L * 2 + 6, h: 12, paint: (r, f) => {
+    r(-L - 2, -11, 3, 2, base); r(L - 1, -11, 3, 2, base);
+    r(-L, -10, L * 2, 3, base);
+    r(-L + 1, -10, L * 2 - 2, 1, "#2a2026");
+    r(-L + 3, -9, 12, 1, light);
+    r(-L + 1, -7, L * 2 - 2, 1, dark);
+    r(-L + 4, -6, 4, 1, "#9aa4ac"); r(L - 8, -6, 4, 1, "#9aa4ac");
+    r(-L + 3, -5, 4, 4, "#f5c518"); r(L - 7, -5, 4, 4, "#f5c518");
+    r(-L + 3, -2, 4, 1, "#b98f10"); r(L - 7, -2, 4, 1, "#b98f10");
     const spin = [[0, 0], [2, 0], [2, 2], [0, 2]][f]!;
-    r(-11 + spin[0]!, -5 + spin[1]!, 1, 1, "#fff0a0"); r(7 + spin[0]!, -5 + spin[1]!, 1, 1, "#fff0a0");
+    r(-L + 3 + spin[0]!, -5 + spin[1]!, 1, 1, "#fff0a0"); r(L - 7 + spin[0]!, -5 + spin[1]!, 1, 1, "#fff0a0");
   } };
 }
 
@@ -123,18 +124,29 @@ const ART: Record<string, Art> = {
     r(-Math.floor(w / 2), -6, Math.max(1, w - 2), 1, "#fff0a0");
     r(-Math.floor(w / 2), -1, w, 1, "#b98f10");
   } },
-  /** The rival: blue hoodie, cap on backwards. He brings his own pink board. */
-  rival: { w: 26, h: 52, paint: (r, f) => {
-    const swing = f % 2;
-    r(-6, -20, 4, 13, "#2a2c38"); r(2, -20, 4, 13, "#2a2c38"); r(-6, -20, 1, 13, "#3e4252");
-    r(-7, -8, 6, 2, "#f4efe6"); r(2, -8, 6, 2, "#f4efe6"); r(-7, -7, 6, 1, "#b9b2a4"); r(2, -7, 6, 1, "#b9b2a4");
-    r(-7, -38, 14, 18, "#1f8cff"); r(-7, -38, 2, 18, "#9fd0ff"); r(5, -38, 2, 18, "#0f4f99");
-    r(-4, -26, 8, 3, "#0f4f99");
-    r(-10, -36 + swing, 3, 10, "#1f8cff"); r(7, -36 - swing, 3, 10, "#1f8cff");
-    r(-10, -27 + swing, 3, 2, "#c98d6a"); r(7, -27 - swing, 3, 2, "#c98d6a");
-    r(-4, -47, 8, 9, "#c98d6a"); r(-4, -47, 2, 9, "#dca684");
-    r(-5, -49, 9, 3, "#1a1420"); r(-8, -48, 3, 2, "#1a1420"); r(-5, -49, 9, 1, "#3a3440");
-    r(1, -44, 1, 1, "#1a1420"); r(1, -41, 2, 1, "#8a5a44");
+  /** The rival: blue hoodie, cap on backwards, about Moss's height. He brings his own pink board. */
+  rival: { w: 36, h: 102, paint: (r, f) => {
+    const s = f % 2;
+    const bob = f === 1 || f === 3 ? 1 : 0;
+    r(-10, -4, 9, 4, "#f4efe6"); r(2, -4, 9, 4, "#f4efe6"); r(-10, -1, 9, 1, "#b9b2a4"); r(2, -1, 9, 1, "#b9b2a4");
+    r(-8, -3, 2, 1, "#1f8cff"); r(4, -3, 2, 1, "#1f8cff");
+    r(-9, -40 + bob, 8, 36 - bob, "#2a2c38"); r(1, -40 + bob, 8, 36 - bob, "#2a2c38");
+    r(-9, -40 + bob, 2, 36 - bob, "#3e4252"); r(7, -40 + bob, 2, 36 - bob, "#1a1c26");
+    r(-8, -24, 6, 1, "#1a1c26"); r(2, -22, 6, 1, "#1a1c26");
+    r(-10, -42 + bob, 20, 2, "#1a1420");
+    r(-12, -72 + bob, 24, 31, "#1f8cff"); r(-12, -72 + bob, 3, 31, "#9fd0ff"); r(9, -72 + bob, 3, 31, "#0f4f99");
+    r(-7, -52 + bob, 14, 6, "#0f4f99"); r(-7, -52 + bob, 14, 1, "#5aaaff");
+    r(-3, -70 + bob, 1, 8, "#f4efe6"); r(2, -70 + bob, 1, 8, "#f4efe6");
+    r(-9, -76 + bob, 18, 5, "#0f4f99");
+    r(-17, -70 + bob + s, 5, 26, "#1f8cff"); r(-17, -70 + bob + s, 1, 26, "#9fd0ff"); r(-17, -44 + bob + s, 5, 4, "#c98d6a");
+    r(12, -70 + bob - s, 5, 26, "#1f8cff"); r(16, -70 + bob - s, 1, 26, "#0f4f99"); r(12, -44 + bob - s, 5, 4, "#c98d6a");
+    r(-3, -78 + bob, 6, 3, "#b07a5a");
+    r(-8, -95 + bob, 16, 17, "#c98d6a"); r(-8, -95 + bob, 3, 17, "#dca684");
+    r(-9, -87 + bob, 2, 4, "#b07a5a");
+    r(3, -88 + bob, 2, 2, "#1a1420"); r(2, -90 + bob, 4, 1, "#3a2418");
+    r(7, -86 + bob, 2, 3, "#b07a5a"); r(2, -82 + bob, 4, 1, "#8a5a44");
+    r(-9, -99 + bob, 18, 6, "#1a1420"); r(-9, -99 + bob, 18, 1, "#3a3440"); r(-15, -96 + bob, 6, 3, "#1a1420");
+    r(-2, -97 + bob, 4, 2, "#ff3ea5");
   } },
 };
 
@@ -307,10 +319,11 @@ export function paintBoard(ctx: Ctx, x: number, ground: number, trick: TrickPose
   }
   if (holding === "manual") rot = -0.18;
   ctx.save();
-  ctx.translate(Math.round(x), Math.round(ground - hop));
+  // Flip about the middle of the deck, not the wheels.
+  ctx.translate(Math.round(x), Math.round(ground - hop - 6));
   if (rot) ctx.rotate(rot);
   ctx.scale(sx, Math.abs(sy) < 0.12 ? 0.12 * Math.sign(sy || 1) : sy);
-  blit(ctx, rival ? "rivalBoard" : "board", Math.floor(now * 14) % 4, 0, 0);
+  blit(ctx, rival ? "rivalBoard" : "board", Math.floor(now * 14) % 4, 0, 6);
   ctx.restore();
   if (holding === "grind" && !reduced) {
     ctx.fillStyle = "#f5c518";
@@ -345,12 +358,14 @@ export function paintFlyer(ctx: Ctx, kind: "coin" | "rubbish" | "feather" | "dro
 
 /** Water dripping off Moss while the splash buff is on. */
 export function paintDrips(ctx: Ctx, x: number, top: number, ground: number, now: number, reduced: boolean) {
-  ctx.fillStyle = "#8cc4f0";
-  for (let i = 0; i < 6; i++) {
-    const dx = x - 12 + ((i * 9) % 26);
-    const fall = reduced ? (i * 13) % 40 : (now * 70 + i * 23) % (ground - top);
-    ctx.globalAlpha = reduced ? 0.8 : 0.9 - fall / (ground - top) * 0.6;
-    ctx.fillRect(Math.round(dx), Math.round(top + fall), 1, 2);
+  for (let i = 0; i < 10; i++) {
+    const dx = x - 16 + ((i * 11) % 34);
+    const fall = reduced ? (i * 17) % 70 : (now * 80 + i * 29) % (ground - top);
+    ctx.globalAlpha = reduced ? 0.85 : 0.95 - fall / (ground - top) * 0.55;
+    ctx.fillStyle = OUT;
+    ctx.fillRect(Math.round(dx) - 1, Math.round(top + fall) - 1, 4, 5);
+    ctx.fillStyle = i % 3 ? "#8cc4f0" : "#dff3ff";
+    ctx.fillRect(Math.round(dx), Math.round(top + fall), 2, 3);
   }
   ctx.globalAlpha = 1;
 }

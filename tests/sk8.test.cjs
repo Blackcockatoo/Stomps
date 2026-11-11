@@ -402,3 +402,13 @@ test('practice and the bonus world hide the toys', () => {
   a.scroll = 400;
   assert.ok(a.stompViews().length > 0);
 });
+
+test('reduced motion: tricks never hop the rider; a cleaner trick pops higher otherwise', () => {
+  const { trickHop, TRICK_TIME } = game.stompArt;
+  const perfect = { id: 'kickflip', grade: 'PERFECT', at: 0 };
+  const ok = { id: 'kickflip', grade: 'OK', at: 0 };
+  assert.equal(trickHop(perfect, TRICK_TIME / 2, true), 0);
+  assert.ok(trickHop(perfect, TRICK_TIME / 2, false) > trickHop(ok, TRICK_TIME / 2, false));
+  assert.equal(trickHop(perfect, TRICK_TIME * 2, false), 0, 'settles after the trick');
+  assert.equal(trickHop({ id: 'bail', grade: null, at: 0 }, 0.1, false), 0);
+});
