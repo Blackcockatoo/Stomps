@@ -11,9 +11,11 @@ export type Lang = "en" | "ja" | "hi";
 export const LANGS: readonly Lang[] = ["en", "ja", "hi"];
 export const LANG_LABEL: Record<Lang, string> = { en: "EN", ja: "日本語", hi: "हिन्दी" };
 /** English name shown under each native label, so anyone can find their way back. */
+/** Names in the language menu: each in its own script. */
+export const LANG_NATIVE: Record<Lang, string> = { en: "English", ja: "日本語", hi: "हिन्दी" };
 export const LANG_ENGLISH: Record<Lang, string> = { en: "English", ja: "Japanese", hi: "Hindi" };
 /** Always multilingual: readable whichever language the cabinet is stuck in. */
-export const LANG_ARIA = "Language · 言語 · भाषा";
+export const LANG_ARIA = "Language / 言語 / भाषा";
 export const LANG_STORAGE_KEY = "moss-stomper-lang";
 
 export type MenuCopy = {

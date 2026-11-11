@@ -7,7 +7,8 @@ import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, t
 import { ROUTE_CARDS } from "@/game/route";
 import { PROMO } from "@/game/promo";
 import { nearest, type Box, type NavDir } from "@/game/menu-nav";
-import { LANGS, LANG_ARIA, LANG_ENGLISH, LANG_LABEL, MENU_COPY, detectLang, saveLang, type Lang } from "@/game/i18n";
+import { LANGS, LANG_ARIA, LANG_ENGLISH, LANG_NATIVE, MENU_COPY, detectLang, saveLang, type Lang } from "@/game/i18n";
+import { LangMenu } from "@/components/lang-menu";
 import type { PadAction } from "@/game/engine/gamepad";
 import { REPORT } from "@/game/report";
 import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
@@ -176,8 +177,8 @@ export function MossApp() {
       if (event.type === "keydown" && (arcade.mode === "menu" || arcade.mode === "result")) {
         const ui = uiRef.current;
         if (ui.attract && arcade.mode === "menu" && ui.panel === "none") {
-          // Let Enter/Space press a focused language button instead of skipping the title.
-          const onLang = document.activeElement instanceof HTMLElement && !!document.activeElement.closest(".lang-row");
+          // Let Enter/Space press the focused globe / language list instead of skipping the title.
+          const onLang = document.activeElement instanceof HTMLElement && !!document.activeElement.closest(".lang-menu");
           if (onLang && (event.key === "Enter" || event.key === " ")) return;
           if (!["Tab", "Shift", "Control", "Alt", "Meta"].includes(event.key)) {
             event.preventDefault();
@@ -410,6 +411,9 @@ export function MossApp() {
           >
             {t.full}
           </button>
+          {!playing ? (
+            <LangMenu lang={lang} langs={LANGS} native={LANG_NATIVE} english={LANG_ENGLISH} label={LANG_ARIA} onPick={pickLang} />
+          ) : null}
         </div>
 
         {mode === "menu" ? (
@@ -423,7 +427,6 @@ export function MossApp() {
 
         {mode === "menu" && panel === "none" && attract ? (
           <div className="attract-screen">
-            <LangSwitch lang={lang} onPick={pickLang} className="lang-attract" />
             <h1 className="brand attract-title">
               MOSS STOMPER
               <small>BLUE $NAKE STUDIO · FRANKSTON AFTER HOURS</small>
@@ -440,7 +443,6 @@ export function MossApp() {
         {mode === "menu" && panel === "none" && !attract ? (
           <div className="overlay menu-card">
             <div>
-              <LangSwitch lang={lang} onPick={pickLang} className="lang-top" />
               <p className="eyebrow">{t.eyebrow}</p>
               <h1 className="brand">
                 MOSS STOMPER
@@ -487,7 +489,6 @@ export function MossApp() {
                   {t.settings}<span className="sr-only">{t.settingsSr}</span>
                 </button>
               </div>
-              <LangSwitch lang={lang} onPick={pickLang} className="lang-foot" />
             </div>
           </div>
         ) : null}
@@ -1181,22 +1182,3 @@ function Lab() {
   );
 }
 
-/** Globe + EN English · 日本語 Japanese · हिन्दी Hindi. The current language is filled with a tick. */
-function LangSwitch({ lang, onPick, className = "" }: { lang: Lang; onPick: (next: Lang) => void; className?: string }) {
-  return (
-    <div className={`lang-row ${className}`} role="group" aria-label={LANG_ARIA}>
-      <svg className="lang-globe" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-        <g fill="none" stroke="currentColor" strokeWidth="1.8">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9M12 3C9.5 5.6 8.2 8.6 8.2 12s1.3 6.4 3.8 9" />
-        </g>
-      </svg>
-      {LANGS.map((code) => (
-        <button key={code} type="button" lang={code} className="lang-btn" aria-pressed={lang === code} onClick={() => onPick(code)}>
-          <b>{LANG_LABEL[code]}</b>
-          <small lang="en">{LANG_ENGLISH[code]}</small>
-        </button>
-      ))}
-    </div>
-  );
-}
