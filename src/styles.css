@@ -294,6 +294,7 @@ body > div { height: 100%; }
 .result-detail { margin-top: 16px; padding: 14px 0; border-block: 1px solid var(--color-border); font-size: 12px; line-height: 1.7; }
 .result-detail strong { color: var(--color-gold); }
 .result-detail small { color: var(--color-muted); }
+.result-detail .sk8-line { margin: 2px 0 4px; color: #9dff5a; font-size: 11px; }
 
 .practice-card { position: absolute; right: 20px; bottom: 20px; z-index: 3; width: min(355px, calc(100% - 40px)); padding: 16px; background: #0a1119ed; border: 1px solid var(--color-border); border-left: 3px solid var(--color-gold); font-size: 10px; line-height: 1.6; }
 .practice-card h2 { font-size: 14px; margin: 8px 0; }

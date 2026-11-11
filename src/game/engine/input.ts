@@ -25,6 +25,13 @@ export function down(g: Arcade, btn: Btn) {
     g.rhythmDown(btn);
     return;
   }
+  if (g.sk8Down(btn)) return;
+  if (g.riding()) {
+    // On a board, a live street encounter is still judged, but Moss's free moves are off.
+    g.streetPending.set(btn, g.now);
+    g.flushStreet();
+    return;
+  }
   g.streetPending.set(btn, g.now);
   if (g.chordCheck()) {
     g.flushStreet();
@@ -37,6 +44,7 @@ export function down(g: Arcade, btn: Btn) {
 export function up(g: Arcade, btn: Btn) {
   g.keys.delete(btn);
   if (g.mode === "rhythm") g.rhythmUp(btn);
+  else g.sk8Up(btn);
 }
 
 export function chordCheck(g: Arcade) {

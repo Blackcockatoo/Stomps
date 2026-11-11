@@ -18,6 +18,20 @@ Hold **A** to stride, tap **S** to stomp, use **D** for style. On phones, use th
 
 **Sound, sync & keys** (menu): volume and mute (also the SOUND toggle in the top bar), a tap-along that measures your audio/visual delay and offers a rhythm offset (SYNC −/+ still fine-tune it), and remappable keys. A **gamepad** (standard mapping) also works: bottom face button strides, right stomps, left styles, top unleashes MOSSQUAKE, Start pauses. In the menu the D-pad (or arrow keys) moves focus, bottom face / Start selects and right backs out of a panel. Screen readers get short announcements for judgements, combos and milestones through a polite live region.
 
+## P5 — SK8 STOMP
+
+**The board:** boards lie tail-down in the street. Stomp the tail (S) on the beat to pop it under Moss; off the beat it squirts ahead and you can chase it. While riding, tap once per beat: A kickflip, S heelflip, D pop shove-it. Three PERFECTs in a row land a **360 flip**; hold a flip button and let go for a **manual**, a **50-50 grind** on the yellow-edged ledge, or a **rail grind** on the pier. Tricks build a chain multiplier (×1 → ×4) that banks when the ride rolls out; an off-beat tap or a missed street cue **bails** and loses the chain. A **style meter** fills when you mix tricks and drains when you repeat one, and scales every chain you land.
+
+**Timing grades:** PERFECT / GREAT / OK now apply everywhere in the street: encounters pay PERFECT > GREAT > OK, props launch further on cleaner hits, tricks pop higher.
+
+**Street toys** (optional, never penalised): shopping trolley (stomp to roll, on-beat second stomp skittles it into the wheelie bins), wheelie bins (lid flip, then a timed stomp for rubbish rain), pigeons (tap to scatter, downbeat stomp for the whole flock), sprinkler (DRIPPING ×1.25 buff), parking meter (rhythmic stomps pay escalating coins). Their cue rings close on the beat.
+
+**Rival skater:** on the way home a rival plays four tricks, one per beat, and you answer the same buttons on the same beats — two rounds. Six of eight beats wins; an all-PERFECT answer out-tricks him.
+
+**Trick lists & secret lines:** each stage has a TRICK LIST goal on a lime objective chip (land a kickflip at the van, four meter coins at the crossing, a downbeat flock at the station, board → trolley → bins on the strip, a 360 flip on the pier, school the rival at home). Three stages hide a secret best line (the right toys in the right order). On THE LONG WAY HOME an S rank needs at least one secret line and S++ needs all three.
+
+Street School gains a SK8 STOMP step (pop the board, land two flips). All art is engine-drawn; no image files were added or changed.
+
 ## P4 — Street School & readable street
 
 **Street School:** your first STREET STRUT (or route) opens a guided Practice of about a minute: stride → STOMP (S) → STYLE (D) → the A+D chord → a deliberate miss, then a recovery hit on the beat → MOSSQUAKE (A+S+D). Each step waits for you, shows progress pips and is announced to screen readers; copy uses your remapped keys. SKIP SCHOOL hands straight over to the run you picked, and STREET SCHOOL in the menu replays it any time. The lesson scores for feedback but never writes bests, lap hits or door progress. Saves gain a `tutorialDone` flag; older saves that already hold a score or route record migrate to "done" (returning players are not forced through it), fresh ones see it once, and the flag survives sanitising.

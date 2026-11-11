@@ -95,7 +95,7 @@ export function award(g: Arcade, label: string, base: number, meterGain: number,
   if (timing === "PERFECT" || timing === "FRESH") g.streak += 1;
   else g.streak = 0;
   if (g.mode !== "strut" && g.streak > 0 && g.streak % 4 === 0) g.score += pointsFor(50);
-  g.callout = combo ? label : timing === "OFF" ? label : `${label} ${timing}`;
+  g.callout = combo ? label : timing === "OFF" ? label : `${label} ${timing === "FRESH" ? "GREAT" : timing === "LATE" ? "OK" : timing}`;
   g.calloutLife = combo ? 1.05 : 0.55;
   if (points > 0) g.popups.push({ text: `+${points}`, life: 1, x: MOSS_X + 20, y: GROUND - 120, gold: combo || timing === "PERFECT" });
 }

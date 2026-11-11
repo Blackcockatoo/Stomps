@@ -30,6 +30,8 @@ export type ResultStats = {
   advice?: string;
   variant?: number;
   techniqueCount?: number;
+  /** SK8 STOMP summary for route results. */
+  sk8?: { tricks: number; landed: number; bails: number; bestChain: number; specials: number; rival: boolean | null; lines: number; linesTotal: number; challenges: number };
 };
 
 export type Step = {
@@ -47,7 +49,7 @@ export type LiveNote = ChartNote & { hit: boolean; missed: boolean; holding: boo
 export type Wave = { x: number; r: number; life: number };
 export type Bird = { x: number; y: number; t: number; vy: number; scare: number };
 export type Grant = { points: number; meter: number; at: number };
-export type StreetMark = { kind: "perfect" | "good" | "miss"; at: number };
+export type StreetMark = { kind: "perfect" | "good" | "miss"; at: number; grade?: "PERFECT" | "GREAT" | "OK" };
 export type Trail = { img: HTMLImageElement | HTMLCanvasElement; x: number; y: number; flip: boolean; life: number };
 export type Mote = { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean };
 

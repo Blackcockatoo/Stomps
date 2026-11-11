@@ -15,9 +15,11 @@ export type ObjectiveInput = {
   pierPerfect: number;
   pierMiss: number;
   techniques: number;
+  /** Current stage's trick-list challenge (SK8 STOMP), if any. */
+  trick?: { text: string; short: string; done: boolean } | null;
 };
 
-export type Chip = { id: "door" | "pier" | "tech"; text: string; short: string; done: boolean; tone: "gold" | "cyan" | "pink" };
+export type Chip = { id: "door" | "pier" | "tech" | "trick"; text: string; short: string; done: boolean; tone: "gold" | "cyan" | "pink" | "lime" };
 
 export function objectiveChips(s: ObjectiveInput): Chip[] {
   if (s.bonus || (s.runKind !== "free" && s.runKind !== "route")) return [];
@@ -36,6 +38,9 @@ export function objectiveChips(s: ObjectiveInput): Chip[] {
       short: crown ? "★ ✓" : lost ? "★ ✗" : `★ ${Math.min(PIER_CROWN_HITS, s.pierPerfect)}/${PIER_CROWN_HITS}`,
       done: crown, tone: "pink",
     });
+  }
+  if (s.trick) {
+    chips.push({ id: "trick", text: s.trick.done ? `✓ ${s.trick.text}` : `TRICK: ${s.trick.text}`, short: s.trick.done ? `✓ ${s.trick.short}` : s.trick.short, done: s.trick.done, tone: "lime" });
   }
   const tech = Math.min(TECHNIQUES_TOTAL, s.techniques);
   chips.push({ id: "tech", text: `TECH ${tech}/${TECHNIQUES_TOTAL}`, short: `T ${tech}/${TECHNIQUES_TOTAL}`, done: tech >= TECHNIQUES_TOTAL, tone: "cyan" });

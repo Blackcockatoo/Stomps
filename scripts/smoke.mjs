@@ -151,14 +151,14 @@ try {
     await page.getByRole('button', { name: /STREET STRUT/ }).click();
     await page.waitForFunction(() => window.__moss?.runKind === 'school');
     await page.locator('.school-card').waitFor();
-    assert.match(await page.locator('.school-card').textContent(), /STEP 1 \/ 6/);
+    assert.match(await page.locator('.school-card').textContent(), /STEP 1 \/ 7/);
     await page.keyboard.down('KeyA');
     await page.waitForFunction(() => (window.__moss?.school?.step ?? 0) >= 1, null, { timeout: 8000 });
     await page.keyboard.up('KeyA');
     await page.waitForFunction(() => (window.__moss?.school?.cues ?? 0) >= 1, null, { timeout: 8000 });
     await page.waitForTimeout(700);
-    assert.match(await page.locator('.school-card').textContent(), /STEP 2 \/ 6/);
-    await page.waitForFunction(() => /Street School, step 2 of 6/.test(document.querySelector('[role="status"][aria-live="polite"]')?.textContent ?? ''), null, { timeout: 4000 });
+    assert.match(await page.locator('.school-card').textContent(), /STEP 2 \/ 7/);
+    await page.waitForFunction(() => /Street School, step 2 of 7/.test(document.querySelector('[role="status"][aria-live="polite"]')?.textContent ?? ''), null, { timeout: 4000 });
     await shot(page, '03-school');
     const skip = await page.locator('.school-skip').boundingBox();
     assert.ok(skip && skip.height >= 44 && skip.width >= 44, 'skip is a ≥44px target');
@@ -183,6 +183,16 @@ try {
     assert.match(await mode(), /mode-pause/);
     await page.keyboard.press('Escape');
     assert.match(await mode(), /mode-strut/);
+  });
+
+  await step('SK8 STOMP: a board sits at the van; a tail stomp pops it (or squirts it ahead off the beat)', async () => {
+    await page.waitForFunction(() => window.__moss?.mode === 'strut');
+    await page.evaluate(() => window.__moss.seek(420 - 132));
+    await page.waitForFunction(() => (window.__moss?.sk8?.toys ?? 0) >= 1);
+    await page.keyboard.press('KeyS');
+    await page.waitForFunction(() => window.__moss.sk8.pops + window.__moss.sk8.squirts >= 1, null, { timeout: 3000 });
+    await page.waitForTimeout(250);
+    await shot(page, '04b-sk8');
   });
 
   await step('rhythm royalty chart chooser starts hard and remembers it', async () => {
