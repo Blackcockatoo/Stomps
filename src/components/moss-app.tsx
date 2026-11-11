@@ -7,6 +7,7 @@ import { ANIM, CELL, LAB_CLIPS, PHASE1_STRUT, STAGE_CONCEPTS, UI, type ClipId, t
 import { ROUTE_CARDS } from "@/game/route";
 import { PROMO } from "@/game/promo";
 import { nearest, type Box, type NavDir } from "@/game/menu-nav";
+import { LANGS, LANG_LABEL, MENU_COPY, detectLang, saveLang, type Lang } from "@/game/i18n";
 import type { PadAction } from "@/game/engine/gamepad";
 import { REPORT } from "@/game/report";
 import { RESERVED_CODES, codeLabel, keyBtn, keyLabel, keysLabel, rebind } from "@/game/keys";
@@ -88,6 +89,10 @@ export function MossApp() {
   const [skin, setSkin] = useState<Skin>("classic");
   /** Title screen: shown once per load, dismissed by any tap, key or pad button. */
   const [attract, setAttract] = useState(true);
+  const [lang, setLang] = useState<Lang>(() => detectLang());
+  const t = MENU_COPY[lang];
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  const pickLang = (next: Lang) => { setLang(next); saveLang(next); };
   const uiRef = useRef({ attract: true, panel: "none" as Panel, onPad: (_action: PadAction) => {}, dismiss: () => {}, close: () => {} });
   /** Which action is waiting for a new key (key remap), if any. */
   const [capture, setCapture] = useState<Btn | null>(null);
@@ -368,7 +373,7 @@ export function MossApp() {
           {playing ? (
             <>
               <button type="button" className="icon-btn" onClick={() => arcadeRef.current?.togglePause()}>
-                {mode === "pause" ? "GO" : "HOLD"}
+                {mode === "pause" ? t.go : t.hold}
               </button>
               <button
                 type="button"
@@ -378,7 +383,7 @@ export function MossApp() {
                   setResult(null);
                 }}
               >
-                EXIT
+                {t.exit}
               </button>
             </>
           ) : null}
@@ -386,10 +391,10 @@ export function MossApp() {
             type="button"
             className="icon-btn"
             aria-pressed={audio.muted}
-            aria-label={audio.muted ? "Sound muted. Unmute" : "Mute sound"}
+            aria-label={audio.muted ? t.unmute : t.mute}
             onClick={() => changeAudio({ ...audio, muted: !audio.muted })}
           >
-            {audio.muted ? "MUTED" : "SOUND"}
+            {audio.muted ? t.muted : t.sound}
           </button>
           <button
             type="button"
@@ -400,7 +405,7 @@ export function MossApp() {
               else void document.exitFullscreen?.().catch(() => {});
             }}
           >
-            FULL
+            {t.full}
           </button>
         </div>
 
@@ -420,10 +425,10 @@ export function MossApp() {
               <small>BLUE $NAKE STUDIO · FRANKSTON AFTER HOURS</small>
             </h1>
             <button type="button" className="attract-gate" autoFocus onClick={dismissAttract}>
-              <span className="attract-pulse">TAP TO START</span>
-              <small>ANY KEY · ENTER · START ON A PAD</small>
+              <span className="attract-pulse">{t.tapToStart}</span>
+              <small>{t.anyKey}</small>
             </button>
-            {!ready && !error ? <p className="attract-load" aria-live="polite">Loading the block… {loadPct}%</p> : null}
+            {!ready && !error ? <p className="attract-load" aria-live="polite">{t.loading(loadPct)}</p> : null}
             {error ? <p className="attract-load">{error}</p> : null}
           </div>
         ) : null}
@@ -431,51 +436,58 @@ export function MossApp() {
         {mode === "menu" && panel === "none" && !attract ? (
           <div className="overlay menu-card">
             <div>
-              <p className="eyebrow">FRANKSTON AFTER HOURS / B$S ARCADE</p>
+              <p className="eyebrow">{t.eyebrow}</p>
               <h1 className="brand">
                 MOSS STOMPER
                 <small>BLUE $NAKE STUDIO</small>
-                <em>STRIDE. STOMP. ATTITUDE.</em>
+                <em>{t.tagline}</em>
               </h1>
               {!ready && !error ? (
                 <div className="load-row">
-                  <p className="hint-row">Loading the block… {loadPct}%</p>
+                  <p className="hint-row">{t.loading(loadPct)}</p>
                   <div className="load-bar" role="progressbar" aria-label="Loading assets" aria-valuemin={0} aria-valuemax={100} aria-valuenow={loadPct}>
                     <div style={{ transform: `scaleX(${loadPct / 100})` }} />
                   </div>
                 </div>
               ) : null}
               {error ? <p className="hint-row">{error}</p> : null}
-              <div className="mode-row" role="group" aria-label="Play">
+              <div className="mode-row" role="group" aria-label={t.playGroup}>
                 <button type="button" className="mode-tile route-start" autoFocus disabled={!ready} onClick={() => go("strut", "route")}>
                   <img src={PROMO.pier} alt="" />
                   <span className="mode-name">THE LONG WAY HOME</span>
-                  <small>ONE ROUTE · YOUR BEST FOOTWORK</small>
-                  {routeBest ? <b className="best-badge">BEST {routeBest.toLocaleString()}</b> : null}
+                  <small>{t.routeSub}</small>
+                  {routeBest ? <b className="best-badge">{t.best} {routeBest.toLocaleString()}</b> : null}
                 </button>
                 <button type="button" className="mode-tile" disabled={!ready} onClick={() => go("strut")}>
                   <img src={PROMO.strip} alt="" />
                   <span className="mode-name">STREET STRUT</span>
-                  <small>FREE PLAY · NO FINISH LINE</small>
-                  {best.strut ? <b className="best-badge">BEST {best.strut.toLocaleString()}</b> : null}
+                  <small>{t.strutSub}</small>
+                  {best.strut ? <b className="best-badge">{t.best} {best.strut.toLocaleString()}</b> : null}
                 </button>
                 <button type="button" className="mode-tile gold" disabled={!ready} onClick={() => setPanel("rhythm")}>
                   <img src={PROMO.royalRave} alt="" />
                   <span className="mode-name">RHYTHM ROYALTY</span>
                   <small>{DIFFICULTY_INFO[difficulty].label} · 104 BPM</small>
-                  {best.rhythm ? <b className="best-badge">BEST {best.rhythm.toLocaleString()}</b> : null}
+                  {best.rhythm ? <b className="best-badge">{t.best} {best.rhythm.toLocaleString()}</b> : null}
                 </button>
               </div>
-              <div className="menu-secondary" role="group" aria-label="More">
-                <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "school")}>SCHOOL<span className="sr-only"> · replay the Street School tutorial</span></button>
-                <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "practice")}>PRACTICE</button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("hints")}>COMBOS</button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("stages")}>STAGE CARDS</button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("lab")}>LAB</button>
-                <button type="button" className="cab-btn" onClick={() => setPanel("notes")}>NOTES</button>
+              <div className="menu-secondary" role="group" aria-label={t.moreGroup}>
+                <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "school")}>{t.school}<span className="sr-only">{t.schoolSr}</span></button>
+                <button type="button" className="cab-btn" disabled={!ready} onClick={() => go("strut", "practice")}>{t.practice}</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("hints")}>{t.combos}</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("stages")}>{t.stages}</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("lab")}>{t.lab}</button>
+                <button type="button" className="cab-btn" onClick={() => setPanel("notes")}>{t.notes}</button>
                 <button type="button" className="cab-btn" onClick={() => setPanel("settings")}>
-                  SETTINGS<span className="sr-only"> · SOUND, SYNC &amp; KEYS</span>
+                  {t.settings}<span className="sr-only">{t.settingsSr}</span>
                 </button>
+              </div>
+              <div className="lang-row" role="group" aria-label={t.language}>
+                {LANGS.map((code) => (
+                  <button key={code} type="button" lang={code} className="lang-btn" aria-pressed={lang === code} onClick={() => pickLang(code)}>
+                    {LANG_LABEL[code]}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -499,10 +511,10 @@ export function MossApp() {
               </div>
               <div className="menu-actions">
                 <button type="button" className="cab-btn primary" autoFocus onClick={() => result.kind === "route" ? go("strut", "route") : go("rhythm")}>
-                  RUN IT BACK
+                  {t.runItBack}
                 </button>
                 <button type="button" className="cab-btn" onClick={() => arcadeRef.current?.menu()}>
-                  CABINET
+                  {t.cabinet}
                 </button>
               </div>
             </div>
@@ -529,7 +541,7 @@ export function MossApp() {
         {panel !== "none" ? (
           <div className="sheet">
             <button type="button" className="cab-btn" onClick={closePanel}>
-              BACK
+              {t.back}
             </button>
             {panel === "lab" ? <Lab /> : null}
             {panel === "hints" ? <Hints /> : null}
@@ -627,7 +639,7 @@ export function MossApp() {
         </div>
       ) : (
         <div className="dock">
-          <p className="hint-row">{keyLabel("A")} / STRIDE　 {keyLabel("B")} / STOMP　 {keyLabel("C")} / STYLE · BUILT IN FRANKSTON</p>
+          <p className="hint-row">{keyLabel("A")} / {t.stride}　 {keyLabel("B")} / {t.stomp}　 {keyLabel("C")} / {t.style} · {t.builtIn}</p>
         </div>
       )}
     </div>
