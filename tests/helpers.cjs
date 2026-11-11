@@ -49,6 +49,8 @@ buildSync({
       "export * as cues from './src/game/cues';",
       "export * as objectives from './src/game/objectives';",
       "export * as props from './src/game/props';",
+      "export * as sk8 from './src/game/sk8';",
+      "export * as stompables from './src/game/stompables';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',

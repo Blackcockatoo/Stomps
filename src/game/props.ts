@@ -11,7 +11,9 @@ import type { StreetId, WindowPx } from "./route";
 
 type Ctx = CanvasRenderingContext2D;
 export type PropKind = "open" | "perfect" | "good" | "miss" | "soon";
-export type PropOptions = { reducedMotion?: boolean; birds?: readonly CanvasImageSource[] };
+export type PropOptions = { reducedMotion?: boolean; birds?: readonly CanvasImageSource[];
+  /** Launch power from the timing grade (PERFECT flies further, OK barely moves). */
+  power?: number };
 
 const OUTLINE = "#120c14";
 const RIM = "#fff3cf";
@@ -21,8 +23,8 @@ const IDLE_FPS = 6;
 /** Hit-pause: the prop holds perfectly still this long before reacting. */
 export const HIT_PAUSE = 0.06;
 
-type Paint = (r: (x: number, y: number, w: number, h: number, c: string) => void, f: number) => void;
-type Art = { w: number; h: number; paint: Paint };
+export type Paint = (r: (x: number, y: number, w: number, h: number, c: string) => void, f: number) => void;
+export type Art = { w: number; h: number; paint: Paint };
 
 /** Coordinates are relative to the prop's ground anchor (x centred, y up = negative). */
 const ART: Record<Exclude<StreetId, "seagull">, Art> = {
@@ -138,7 +140,7 @@ const ART: Record<Exclude<StreetId, "seagull">, Art> = {
   } },
 };
 
-type Baked = { frames: HTMLCanvasElement[]; ghost: HTMLCanvasElement[]; ax: number; ay: number };
+export type Baked = { frames: HTMLCanvasElement[]; ghost: HTMLCanvasElement[]; ax: number; ay: number };
 const cache = new Map<string, Baked | null>();
 
 function canvas(w: number, h: number) {
@@ -186,11 +188,14 @@ export function bakeOutlined(src: HTMLCanvasElement, rimAlpha = 0.55, shadeAlpha
 }
 
 function bake(id: Exclude<StreetId, "seagull">): Baked | null {
-  const key = id;
+  return bakeArt(id, ART[id]);
+}
+
+/** Bakes any 4-frame procedural art once (outline, rim, shade, white ghost), cached by key. */
+export function bakeArt(key: string, art: Art): Baked | null {
   if (cache.has(key)) return cache.get(key) ?? null;
   let baked: Baked | null = null;
   try {
-    const art = ART[id];
     const w = art.w + 4;
     const h = art.h + 4;
     const ax = Math.floor(w / 2);
@@ -276,7 +281,8 @@ export function paintProp(
   }
   const f = hit || kind === "miss" ? 0 : idleFrame(time, salt(x), reduced);
   const img = baked.frames[f];
-  const [tx, ty, rot] = reduced ? [0, 0, 0] : travel(id, lift);
+  const power = opts.power ?? 1;
+  const [tx, ty, rot] = reduced ? [0, 0, 0] : travel(id, lift).map((v) => v * power) as [number, number, number];
   const [sx, sy] = hit ? hitSquash(age, reduced) : [1, 1];
   ctx.save();
   ctx.translate(tx, ty);
@@ -340,7 +346,7 @@ function lights(ctx: Ctx, id: StreetId, kind: PropKind, lift: number, time: numb
 }
 
 /** Expanding ring + pixel shards on a hit (gold for PERFECT). */
-function burst(ctx: Ctx, x: number, y: number, age: number, perfect: boolean, reduced: boolean) {
+export function burst(ctx: Ctx, x: number, y: number, age: number, perfect: boolean, reduced: boolean) {
   const t = age - HIT_PAUSE;
   if (t < 0 || t > 0.5) return;
   const u = t / 0.5;
@@ -396,7 +402,11 @@ const PIP_GAP = 4;
  * shrinks onto the pip frame at PERFECT, and a short action label.
  */
 export function paintCue(ctx: Ctx, trigger: readonly Btn[], x: number, y: number, dist: number, win: WindowPx, time: number, reducedMotion = false) {
-  const state = cueState(dist, win);
+  paintCueState(ctx, trigger, x, y, cueState(dist, win), time, reducedMotion);
+}
+
+/** Draws a cue from an explicit state (stompable toys close their ring on the beat instead of by distance). */
+export function paintCueState(ctx: Ctx, trigger: readonly Btn[], x: number, y: number, state: ReturnType<typeof cueState>, time: number, reducedMotion = false, labelText?: string) {
   if (state.phase === "hidden") return;
   const total = trigger.length * PIP + (trigger.length - 1) * PIP_GAP;
   const hot = state.phase === "hot";
@@ -447,7 +457,7 @@ export function paintCue(ctx: Ctx, trigger: readonly Btn[], x: number, y: number
   ctx.stroke();
   // Label.
   ctx.globalAlpha = state.phase === "preview" ? 0.6 : 1;
-  const label = cueLabel(trigger);
+  const label = labelText ?? cueLabel(trigger);
   ctx.font = "6px 'Press Start 2P', monospace";
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
@@ -457,3 +467,6 @@ export function paintCue(ctx: Ctx, trigger: readonly Btn[], x: number, y: number
   ctx.fillText(label, cx, cy + PIP + 12);
   ctx.restore();
 }
+
+/** The street-prop art, shared with the SK8 STOMP toys (the trolley is the same trolley). */
+export const PROP_ART = ART;

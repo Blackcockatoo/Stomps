@@ -6,6 +6,7 @@ import { cycleOf, paintBackdrop, paintBonusWorld, paintDoor, paintGlow, paintMar
 import { paintCue, paintProp } from "../props";
 import { DOOR_HINT_PX, doorOpen, doorWorld, pierCrown, GOLDEN_MULT } from "../bonus";
 import { GROUND, H, W } from "./types";
+import { GRADE_POWER } from "../sk8";
 
 export function draw(g: Arcade) {
   const ctx = g.ctx2d;
@@ -32,6 +33,7 @@ export function draw(g: Arcade) {
   drawWaves(g);
   drawMomentum(g);
   drawMoss(g);
+  g.drawSk8Front();
   drawWorld(g, true);
   drawFx(g);
   for (const mote of g.motes) {
@@ -161,6 +163,7 @@ export function drawBeatPulse(g: Arcade) {
 export function drawStreets(g: Arcade) {
   const ctx = g.ctx2d;
   drawDoor(g);
+  g.drawStomps();
   for (const view of g.streetViews()) {
     const mark = g.streetMarks.get(view.key);
     const screen = view.world - g.scroll;
@@ -171,7 +174,8 @@ export function drawStreets(g: Arcade) {
       kind = mark.kind;
       age = g.now - mark.at;
     } else if (Math.abs(view.dist) <= view.win.good) kind = "open";
-    paintProp(ctx, view.spec.id, screen, GROUND, age, kind, g.now, { reducedMotion: g.reducedMotion, birds: g.birdsImg });
+    paintProp(ctx, view.spec.id, screen, GROUND, age, kind, g.now, { reducedMotion: g.reducedMotion, birds: g.birdsImg,
+      power: mark?.grade ? GRADE_POWER[mark.grade] : 1 });
     if (!mark && g.mode === "strut") paintCue(ctx, view.spec.trigger, screen, GROUND - 118, view.dist, view.win, g.now, g.reducedMotion);
   }
 }
@@ -261,6 +265,8 @@ export function drawMoss(g: Arcade) {
   const ctx = g.ctx2d;
   const x = g.mossX();
   const flip = step.flip || (step.clip === "strut" && g.faceLeft);
+  // On a board Moss stands on the deck (drawn first, under his soles) and pops with each trick.
+  const deck = g.drawRideBoard(x + (g.reducedMotion ? 0 : g.body.x));
   ctx.save();
   // Continuous sub-frame body motion keeps original pixel poses crisp.
   const phase=(g.frame + (g.frameAcc + g.accumulator * step.speed) * PLAY_CLIPS[step.clip].fps)*Math.PI/4;
@@ -268,7 +274,7 @@ export function drawMoss(g: Arcade) {
   const bob=g.reducedMotion || !moving ? 0 : Math.sin(phase*2)*.65;
   const lateral = g.reducedMotion ? 0 : g.body.x;
   const lift = g.reducedMotion ? 0 : g.body.y;
-  ctx.translate(x + lateral, GROUND + CELL.solePad + bob + lift);
+  ctx.translate(x + lateral, GROUND + CELL.solePad + bob + lift - deck);
   if (!g.reducedMotion && moving) ctx.rotate(Math.sin(phase)*.006);
   if (!g.reducedMotion && g.impactLife > 0) {
     const squash = Math.sin(g.impactLife / 0.24 * Math.PI) * 0.035;

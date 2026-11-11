@@ -35,6 +35,9 @@ import * as motion from "./engine/motion";
 import * as renderer from "./engine/renderer";
 import * as hud from "./engine/hud";
 import * as school from "./engine/school";
+import * as sk8 from "./engine/sk8";
+import * as sk8draw from "./engine/sk8-draw";
+import { schoolCurrent } from "./tutorial";
 import { installProbe, removeProbe } from "./engine/probe";
 import { emptyArt, loadArt } from "./engine/loader";
 import { GamepadInput, isNav, type PadAction } from "./engine/gamepad";
@@ -170,6 +173,8 @@ export class Arcade {
   view: ViewSpan = FULL_VIEW;
   /** Active bonus-world segment, if Moss went through the door. */
   bonus: BonusRun | null = null;
+  /** SK8 STOMP: board ride, street toys, rival skater, trick lists and hidden lines. */
+  p5: sk8.P5 = sk8.newP5();
   /** Street School lesson, only while runKind is "school". */
   school: school.SchoolRun | null = null;
   /** Zone title card: index last entered and when. */
@@ -386,6 +391,7 @@ export class Arcade {
     this.streetPerfect = 0;
     this.streetGood = 0;
     this.streetMiss = 0;
+    this.p5 = sk8.newP5();
     this.mode = "strut";
     this.groove.start();
     this.hooks.onMode("strut");
@@ -415,6 +421,11 @@ export class Arcade {
 
   tickSchool(dt: number) {
     school.tickSchool(this, dt);
+  }
+
+  /** Current Street School step id, or null outside the lesson. */
+  schoolStepId() {
+    return this.school ? schoolCurrent(this.school.state)?.id ?? null : null;
   }
 
   /** True when the first strut click should open Street School first. */
@@ -691,6 +702,66 @@ export class Arcade {
 
   leadStreet() {
     return street.leadStreet(this);
+  }
+
+  // ── SK8 STOMP ──────────────────────────────────────────────────────────
+
+  sk8Down(btn: Btn) {
+    return sk8.sk8Down(this, btn);
+  }
+
+  sk8Up(btn: Btn) {
+    sk8.sk8Up(this, btn);
+  }
+
+  /** On a board (free ride or the rival meeting). */
+  riding() {
+    return sk8.riding(this);
+  }
+
+  rideSpeed() {
+    return sk8.rideSpeed(this);
+  }
+
+  tickSk8(dt: number) {
+    sk8.tickSk8(this, dt);
+  }
+
+  sk8Bail(why: string) {
+    sk8.doBail(this, why);
+  }
+
+  holdFinish() {
+    return sk8.holdFinish(this);
+  }
+
+  stompViews() {
+    return sk8.stompViews(this);
+  }
+
+  buffMult() {
+    return sk8.buffMult(this);
+  }
+
+  trickChip(zone: string) {
+    return sk8.trickChip(this, zone);
+  }
+
+  drawStomps() {
+    sk8draw.drawStomps(this);
+  }
+
+  /** Draws the board under Moss and returns how far to lift him (0 when not riding). */
+  drawRideBoard(x: number) {
+    return sk8draw.drawRideBoard(this, x);
+  }
+
+  drawSk8Front() {
+    sk8draw.drawSk8Front(this);
+  }
+
+  drawSk8Hud(left: number, right: number) {
+    sk8draw.drawSk8Hud(this, left, right);
   }
 
   // ── Rhythm ─────────────────────────────────────────────────────────────

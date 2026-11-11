@@ -5,10 +5,10 @@ const { game, make, memoryStorage } = require('./helpers.cjs');
 const T = game.tutorial;
 const plain = (b) => b;
 
-test('street school reducer walks all six steps in order', () => {
+test('street school reducer walks all seven steps in order', () => {
   let s = T.newSchool();
-  assert.equal(T.SCHOOL_STEPS.length, 6);
-  assert.deepEqual(T.SCHOOL_STEPS.map((x) => x.id), ['stride', 'stomp', 'style', 'chord', 'recover', 'quake']);
+  assert.equal(T.SCHOOL_STEPS.length, 7);
+  assert.deepEqual(T.SCHOOL_STEPS.map((x) => x.id), ['stride', 'stomp', 'style', 'chord', 'recover', 'board', 'quake']);
   s = T.schoolStep(s, { type: 'hit', id: 'crossing_signal' });
   assert.equal(s.index, 0, 'hits do nothing during the stride step');
   s = T.schoolStep(s, { type: 'hold', dt: 0.7 });
@@ -31,6 +31,14 @@ test('street school reducer walks all six steps in order', () => {
   assert.equal(s.missed, false);
   assert.equal(s.slip, 'late');
   s = T.schoolStep(T.schoolStep(s, { type: 'miss', id: 'puddle' }), { type: 'recover' });
+  assert.equal(T.schoolCurrent(s).id, 'board');
+  s = T.schoolStep(s, { type: 'bail' });
+  assert.equal(s.slip, 'bailed');
+  assert.match(T.schoolText(s, plain).title, /BAILED/);
+  s = T.schoolStep(s, { type: 'ride', tricks: 1 });
+  assert.equal(s.slip, 'short');
+  assert.equal(T.schoolCurrent(s).id, 'board', 'one trick is not enough');
+  s = T.schoolStep(s, { type: 'ride', tricks: 2 });
   assert.equal(T.schoolCurrent(s).id, 'quake');
   const before = s;
   s = T.schoolStep(s, { type: 'quake' });
@@ -49,10 +57,12 @@ test('skip ends the school and copy uses the bound keys', () => {
   const remap = { A: 'J', B: 'K', C: 'L' };
   const chord = { ...T.newSchool(), index: 3 };
   assert.match(T.schoolText(chord, (b) => remap[b]).line, /J and L together/);
-  const quake = { ...T.newSchool(), index: 5 };
+  const quake = { ...T.newSchool(), index: 6 };
+  const board = { ...T.newSchool(), index: 5 };
+  assert.match(T.schoolText(board, (b) => remap[b]).line, /Stomp K on the board's tail/);
   assert.match(T.schoolText(quake, (b) => remap[b]).line, /J\+K\+L/);
   const say = T.schoolAnnouncement({ ...T.newSchool(), index: 1 }, (b) => remap[b]);
-  assert.match(say, /^Street School, step 2 of 6:/);
+  assert.match(say, /^Street School, step 2 of 7:/);
   assert.match(say, /Tap K to stomp/);
   const recover = { ...T.newSchool(), index: 4, missed: true };
   assert.match(T.schoolText(recover, plain).line, /halves FLOW and drains 10% Quake/);
@@ -97,7 +107,7 @@ test('a full street school run teaches every step and saves tutorialDone', () =>
   a.playSchool('free');
   assert.equal(a.runKind, 'school');
   run(a, 0.02);
-  assert.match(said[0], /Street School, step 1 of 6/);
+  assert.match(said[0], /Street School, step 1 of 7/);
   a.keys.add('A'); run(a, 1.4); a.keys.delete('A');
   assert.equal(a.school.state.index, 1);
   hitNext(a, ['B']); hitNext(a, ['B']);
@@ -116,6 +126,20 @@ test('a full street school run teaches every step and saves tutorialDone', () =>
   assert.equal(a.school.state.missed, true, 'the intentional miss registers');
   assert.ok(a.flowState.recoveryUntil > a.now);
   a.commitSingle('B');
+  assert.equal(T.schoolCurrent(a.school.state).id, 'board');
+  // SK8 STOMP: a board spawns ahead; stomp its tail on the beat, flip twice on later beats, land.
+  run(a, 0.2);
+  const board = a.p5.school.find((r) => r.kind === 'board');
+  assert.ok(board, 'the lesson puts a board ahead of Moss');
+  a.scroll += board.world - a.mossWorld();
+  a.groove.t = 0;
+  a.down('B'); a.up('B');
+  assert.ok(a.p5.sk8.ride, 'an on-beat stomp on the tail pops the board');
+  a.groove.t = a.groove.beatDur; a.down('A'); a.up('A');
+  a.groove.t = a.groove.beatDur * 2; a.down('C'); a.up('C');
+  assert.equal(a.p5.sk8.ride.links.length, 2);
+  run(a, 6.2);
+  assert.equal(a.p5.sk8.ride, null, 'the ride lands on its own');
   assert.equal(T.schoolCurrent(a.school.state).id, 'quake');
   run(a, 1.5);
   assert.equal(a.meter, 1, 'quake step fills the drive');

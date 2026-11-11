@@ -8,10 +8,12 @@ import { ROUTE_PX, STREETS, zoneSample, streetForLap, streetPrefix, streetSoluti
 import { GROUND, MOSS_X } from "./types";
 import { BONUS_MULT, bonusViews, tickBonus, tickDoor } from "../bonus";
 import { schoolViews } from "./school";
+import { distGrade } from "../sk8";
+import { LINES } from "../stompables";
 
 export function tickStrut(g: Arcade, dt: number) {
   const boosting = g.keys.has("A") && !g.keys.has("C");
-  const speed = boosting ? 138 : g.idleFor > 2.4 ? 64 : 92;
+  const speed = g.rideSpeed() ?? (boosting ? 138 : g.idleFor > 2.4 ? 64 : 92);
   const heavy = g.currentClip() === "stomp" || g.currentClip() === "quake" || g.currentClip() === "slide";
   const flow = speed * (heavy ? 0.72 : 1);
   g.flow += (flow - g.flow) * (1 - Math.exp(-dt * 9));
@@ -30,6 +32,7 @@ export function tickStrut(g: Arcade, dt: number) {
     // Street School: only the lesson's cues exist; no door, laps, finish or bests.
     g.scanStreets();
     g.flushStreet();
+    g.tickSk8(dt);
     g.tickSchool(dt);
     return;
   }
@@ -43,6 +46,7 @@ export function tickStrut(g: Arcade, dt: number) {
   // Practice is for combos: street props are hidden and never scored there.
   if (g.runKind !== "practice") g.scanStreets();
   g.flushStreet();
+  g.tickSk8(dt);
   if (g.bonus) {
     // Inside the bonus world the route (finish line, laps) is on hold.
     tickBonus(g);
@@ -51,7 +55,7 @@ export function tickStrut(g: Arcade, dt: number) {
   }
   tickDoor(g);
   if (g.bonus) return;
-  if (g.runKind === "route" && g.scroll + MOSS_X >= ROUTE_PX) {
+  if (g.runKind === "route" && g.scroll + MOSS_X >= ROUTE_PX && !g.holdFinish()) {
     g.finishRoute();
     return;
   }
@@ -81,7 +85,8 @@ export function finishRoute(g: Arcade) {
   g.groove.stop();
   const mastery = assess({ perfect: g.streetPerfect, good: g.streetGood, missed: g.streetMiss,
     expected: STREETS.length + [...g.streetMarks.keys()].filter(key => key.startsWith("bonus-")).length, longest: g.flowState.longest, techniques: g.techniques.size,
-    bonus: g.bonusCleared, golden: g.goldenCleared });
+    bonus: g.bonusCleared, golden: g.goldenCleared, lines: g.p5.lines.size, linesTotal: LINES.length });
+  const sk8 = g.p5.sk8;
   const recordKey = `stratosphere-${g.runSeed}`;
   const priorBest = g.save.routeRecords[recordKey]?.score ?? 0;
   const newRecord = g.score > priorBest;
@@ -98,7 +103,9 @@ export function finishRoute(g: Arcade) {
     variant: g.runSeed, techniqueCount: g.techniques.size,
     perfect: g.streetPerfect, fresh: g.streetGood, late: 0,
     stumble: g.streetMiss, maxCombo: g.flowState.longest, bonus: g.bonusCleared,
-    flowPeak: g.flowState.peak, goldenBonus: g.goldenCleared });
+    flowPeak: g.flowState.peak, goldenBonus: g.goldenCleared,
+    sk8: { tricks: sk8.tricks, landed: sk8.landed, bails: sk8.bails, bestChain: sk8.bestChain, specials: sk8.specials.size,
+      rival: g.p5.rivalPlayed ? g.p5.rivalWins > 0 : null, lines: g.p5.lines.size, linesTotal: LINES.length, challenges: g.p5.challenges.size } });
   g.hooks.onMode("result");
 }
 
@@ -191,6 +198,7 @@ function scanOne(g: Arcade, key: string, dist: number, win: View["win"], spec: S
     g.calloutLife = 0.95;
     g.groove.miss();
     g.announce("Missed street move. Tap on beat to recover flow.");
+    if (g.p5.sk8.ride) g.sk8Bail("STREET MISS");
     g.schoolEvent({ type: "miss", id: spec.id });
   }
 }
@@ -235,31 +243,36 @@ export function flushStreet(g: Arcade) {
 export function settleStreet(g: Arcade, spec: StreetSpec, key: string, dist: number, perfectPx: number,
   quality: StreetQuality = "main", goodPx = perfectPx * 1.85) {
   if (g.streetMarks.has(key) || !Number.isFinite(dist) || Math.abs(dist) > goodPx) return;
-  const kind = Math.abs(dist) <= perfectPx ? "perfect" : "good";
+  // A controlled late dodge is a close call, not a random payout for misses.
+  const closeCall = !spec.body && dist < -perfectPx && Math.abs(dist) >= goodPx * 0.8 && Math.abs(dist) <= goodPx;
+  // A close call is deliberate, so it grades GREAT even at the edge of the window.
+  const grade = closeCall ? "GREAT" : distGrade(dist, perfectPx, goodPx) ?? "OK";
+  const kind = grade === "PERFECT" ? "perfect" : "good";
   if (quality === "technique" && g.lastTechnique) {
     g.techniques.add(g.lastTechnique.name);
     g.signatureHits += 1;
   }
-  // A controlled late dodge is a close call, not a random payout for misses.
-  const closeCall = !spec.body && dist < -perfectPx && Math.abs(dist) >= goodPx * 0.8 && Math.abs(dist) <= goodPx;
   g.refundRecent(); // A button and its street encounter must never pay twice.
   const previousLevel = g.flowState.level;
   g.flowState = flowHit(g.flowState);
-  g.streetMarks.set(key, { kind, at: g.now });
+  g.streetMarks.set(key, { kind, at: g.now, grade });
   if (kind === "perfect") g.streetPerfect += 1;
   else g.streetGood += 1;
   if (!g.bonus && spec.zone === "pier" && kind === "perfect") g.pierPerfect += 1;
   const variety = [1, 1.1, 1.4, 1.8][Math.min(3, new Set(g.recent).size)] ?? 1;
   const mult = g.bonus ? (g.bonus.multiplier ?? BONUS_MULT) : 1;
   const execution = quality === "technique" ? 1.5 : quality === "alternative" ? 0.72 : 1;
-  const points = pointsFor((kind === "perfect" ? spec.scorePerfect : spec.scoreGood) * variety * mult *
-    flowMultiplier(g.flowState) * execution * (closeCall ? 1.15 : 1));
+  // GREAT sits between PERFECT and OK: a cleaner hit pays more and launches the prop further.
+  const base = kind === "perfect" ? spec.scorePerfect : spec.scoreGood * (grade === "GREAT" ? 1.15 : 0.9);
+  const points = pointsFor(base * variety * mult *
+    flowMultiplier(g.flowState) * execution * (closeCall ? 1.15 : 1) * g.buffMult());
   g.score += points;
   if (!g.bonus && g.runKind !== "school") g.lapHits += 1;
   g.meter = Math.min(1, g.meter + (kind === "perfect" ? 0.07 : 0.04));
   g.callout = closeCall ? "CLOSE CALL!" : quality === "technique" ? "SIGNATURE TECHNIQUE!" :
     g.flowState.level > previousLevel ? flowName(g.flowState.level) : mult > 1 ? `${spec.feedback} ×${mult}` : spec.feedback;
-  g.announce(`${kind === "perfect" ? "Perfect" : "Good"}: ${spec.feedback.toLowerCase()}${mult > 1 ? `, times ${mult}` : ""}`);
+  g.announce(`${grade === "PERFECT" ? "Perfect" : grade === "GREAT" ? "Great" : "OK"}: ${spec.feedback.toLowerCase()}${mult > 1 ? `, times ${mult}` : ""}`);
+  g.popups.push({ text: grade, life: 0.7, x: g.mossX() + 22, y: GROUND - 136, gold: grade === "PERFECT" });
   g.calloutLife = 1.05;
   g.schoolEvent({ type: "hit", id: spec.id });
   g.popups.push({

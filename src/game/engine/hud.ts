@@ -37,6 +37,7 @@ export function drawHud(g: Arcade) {
     }
   }
   if (g.mode === "strut") {
+    g.drawSk8Hud(L, R);
     drawChips(g, sample.zone.id, L, narrow);
     drawZoneCard(g);
   }
@@ -85,13 +86,14 @@ export function drawHud(g: Arcade) {
   }
 }
 
-const CHIP_TONE: Record<Chip["tone"], string> = { gold: "#f5c518", cyan: "#64e2ed", pink: "#ff3ea5" };
+const CHIP_TONE: Record<Chip["tone"], string> = { gold: "#f5c518", cyan: "#64e2ed", pink: "#ff3ea5", lime: "#9dff5a" };
 
 /** Objective strip (top-left): pops when a value changes, stamps ✓ when done. */
 function drawChips(g: Arcade, zoneId: string, left: number, narrow: boolean) {
   const chips = objectiveChips({
     runKind: g.runKind, bonus: !!g.bonus, lapHits: g.lapHits, meter: g.meter, zoneId,
     pierPerfect: g.pierPerfect, pierMiss: g.pierMiss, techniques: g.techniques.size,
+    trick: g.trickChip(zoneId),
   });
   if (!chips.length) return;
   const ctx = g.ctx2d;

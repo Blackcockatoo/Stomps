@@ -6,7 +6,7 @@
 import type { Btn } from "./arcade-types";
 import type { StreetId } from "./route";
 
-export type SchoolStepId = "stride" | "stomp" | "style" | "chord" | "recover" | "quake";
+export type SchoolStepId = "stride" | "stomp" | "style" | "chord" | "recover" | "board" | "quake";
 
 export type SchoolStep = {
   id: SchoolStepId;
@@ -24,6 +24,7 @@ export const SCHOOL_STEPS: readonly SchoolStep[] = [
   { id: "style", title: "ADD STYLE", goal: 2, cue: "vape_cloud", trigger: ["C"] },
   { id: "chord", title: "CHORD", goal: 1, cue: "skateboard", trigger: ["A", "C"] },
   { id: "recover", title: "MISS, THEN RECOVER", goal: 1, cue: "puddle", trigger: ["A"] },
+  { id: "board", title: "SK8 STOMP", goal: 2, cue: null, trigger: ["B"] },
   { id: "quake", title: "MOSSQUAKE", goal: 1, cue: null, trigger: ["A", "B", "C"] },
 ];
 
@@ -34,7 +35,7 @@ export type SchoolState = {
   /** Recover step: the intentional miss has happened and recovery is open. */
   missed: boolean;
   /** Last thing that went wrong, for the instruction line. */
-  slip: "none" | "missed" | "pressed" | "late";
+  slip: "none" | "missed" | "pressed" | "late" | "bailed" | "short";
   finished: boolean;
   skipped: boolean;
   /** Bumps every time the step changes so the glue can spawn fresh cues. */
@@ -48,6 +49,9 @@ export type SchoolEvent =
   | { type: "recover" }
   | { type: "expire" }
   | { type: "quake" }
+  /** A board ride ended with this many tricks landed. */
+  | { type: "ride"; tricks: number }
+  | { type: "bail" }
   | { type: "skip" };
 
 export function newSchool(): SchoolState {
@@ -89,6 +93,10 @@ export function schoolStep(state: SchoolState, event: SchoolEvent): SchoolState 
       if (event.type === "recover" && state.missed) return advance(state);
       if (event.type === "expire" && state.missed) return { ...state, missed: false, slip: "late" };
       return state;
+    case "board":
+      if (event.type === "bail") return { ...state, slip: "bailed" };
+      if (event.type === "ride") return event.tricks >= step.goal ? advance(state) : { ...state, count: Math.max(state.count, event.tricks), slip: "short" };
+      return state;
     case "quake":
       return event.type === "quake" ? advance(state) : state;
   }
@@ -127,6 +135,10 @@ export function schoolText(state: SchoolState, label: Label): { title: string; l
       if (state.slip === "pressed") return { title: step.title, line: "You hit that one. This time let the puddle pass: press nothing." };
       if (state.slip === "late") return { title: step.title, line: "The recovery window closed. Let the next puddle pass, then tap on the beat straight away." };
       return { title: step.title, line: "Let this puddle pass. Don't press anything. Then you'll learn how to recover." };
+    case "board":
+      if (state.slip === "bailed") return { title: "BAILED. GO AGAIN", line: `Off the beat throws the board ahead. Stomp ${b} on its tail again, on the beat, and flip with each pulse.` };
+      if (state.slip === "short") return { title: step.title, line: `Landed, but flip it at least twice before the ride rolls out. Tap ${a}, ${b} or ${c} once per beat.` };
+      return { title: step.title, line: `Stomp ${b} on the board's tail, on the beat, to pop it. Riding: tap ${a}, ${b} or ${c} on each beat to flip it. Land two. (Three PERFECTs = 360 flip. Hold, then let go = manual.)` };
     case "quake":
       return { title: step.title, line: `Hits fill the Quake Drive. It's full now: press ${a}+${b}+${c} together, or tap the meter.` };
   }
