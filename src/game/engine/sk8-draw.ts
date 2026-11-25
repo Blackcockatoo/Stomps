@@ -7,15 +7,33 @@ import * as K from "../sk8";
 import * as S from "../stompables";
 import { BOARD_LIFT, paintBeatCue, paintBoard, paintDrips, paintFlyer, paintRival, paintStomp, type TrickPose } from "../stomp-art";
 import { GROUND, W } from "./types";
+import { paintP6 } from "../p6/art";
+import { P6_PROPS, isP6Kind } from "../p6/props-data";
 
-const CUE: Partial<Record<S.StompKind, (run: S.StompRun) => string>> = {
+const CUE: Partial<Record<S.PropKind, (run: S.StompRun) => string>> = {
   board: () => "STOMP TAIL",
   trolley: (run) => run.state === "rolling" ? "AGAIN ON BEAT" : "STOMP",
   wheelie: (run) => run.state === "open" ? "AGAIN!" : "STOMP LID",
   pigeons: () => "STOMP ON 1",
   sprinkler: () => "SPLASH",
   meter: (run) => run.state === "paying" ? `KEEP STOMPING ×${run.coins}` : "STOMP",
+  cone: () => P6_PROPS.cone.cue,
 };
+
+const STOMP_ONLY: readonly Btn[] = ["B"];
+const P6_TRIGGERS = new Map<string, readonly Btn[]>();
+
+/** Buttons a prop's cue shows: STOMP for the P5 toys, every button the definition uses for P6 props. */
+function cueTrigger(run: S.StompRun): readonly Btn[] {
+  if (!isP6Kind(run.kind)) return STOMP_ONLY;
+  let pips = P6_TRIGGERS.get(run.kind);
+  if (!pips) {
+    const used = new Set(P6_PROPS[run.kind].interactions.map((i) => i.gesture.btn));
+    pips = (["A", "B", "C"] as const).filter((b) => used.has(b));
+    P6_TRIGGERS.set(run.kind, pips);
+  }
+  return pips;
+}
 
 function beatPhase(g: Arcade, beats = 1) {
   if (!g.groove.running) return 0.5;
@@ -32,7 +50,8 @@ export function drawStomps(g: Arcade) {
     const screen = view.x - g.scroll;
     const span = view.run.kind === "ledge" ? view.run.len : 0;
     if (screen < -60 - span || screen > W + 60) continue;
-    paintStomp(ctx, view.run, screen, GROUND, g.now, g.reducedMotion);
+    if (isP6Kind(view.run.kind)) paintP6(ctx, view.run, screen, GROUND, g.now, g.reducedMotion);
+    else paintStomp(ctx, view.run, screen, GROUND, g.now, g.reducedMotion);
   }
   if (g.mode !== "strut" || g.riding()) return;
   for (const view of views) {
@@ -43,7 +62,7 @@ export function drawStomps(g: Arcade) {
     if (!label) continue;
     const hot = S.inReach(run, view.dist);
     const screen = run.state === "paying" ? Math.max(g.mossX() + 30, view.x - g.scroll) : view.x - g.scroll;
-    paintBeatCue(ctx, ["B"], screen, GROUND - 122, beatPhase(g, run.kind === "pigeons" ? 4 : 1), hot, g.now, g.reducedMotion, label);
+    paintBeatCue(ctx, cueTrigger(run), screen, GROUND - 122, beatPhase(g, run.kind === "pigeons" ? 4 : 1), hot, g.now, g.reducedMotion, label);
   }
 }
 

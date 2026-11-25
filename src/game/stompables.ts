@@ -8,10 +8,16 @@ import type { Btn } from "./arcade-types";
 import { GRADE_MULT, isDownbeat, type Grade, type Timing } from "./sk8";
 import { DOOR_AT } from "./bonus";
 import { ROUTE_PX, STREETS, ZONES, streetX, type ZoneId } from "./route";
+import { meets, type P6PropKind, type P6State, type P6Tag, type PropDef } from "./p6/contracts";
+import { P6_PLACEMENTS, P6_PROPS, isP6Kind } from "./p6/props-data";
 
 export type StompKind = "board" | "trolley" | "wheelie" | "pigeons" | "sprinkler" | "meter" | "ledge";
 
 export type StompSpec = { uid: string; kind: StompKind; zone: ZoneId; at: number; len?: number };
+
+/** Any live prop: the seven P5 kinds plus registry-driven P6 kinds (p6/props-data.ts). */
+export type PropKind = StompKind | P6PropKind;
+export type PropSpec = { uid: string; kind: PropKind; zone: ZoneId; at: number; len?: number };
 
 /** Layout. Every prop keeps clear of the authored encounters (see auditStompables). */
 const RAW: Omit<StompSpec, "uid">[] = [
@@ -31,6 +37,12 @@ const RAW: Omit<StompSpec, "uid">[] = [
 ];
 
 export const STOMPABLES: StompSpec[] = RAW.map((spec, i) => ({ ...spec, uid: `${spec.zone}-${spec.kind}-${i}` }));
+
+/** Every placed prop: the P5 layout (unchanged ids) followed by the P6 registry placements. */
+export const PROP_SPECS: PropSpec[] = [
+  ...STOMPABLES,
+  ...P6_PLACEMENTS.map((spec, i) => ({ ...spec, uid: `p6-${spec.zone}-${spec.kind}-${i}` })),
+];
 
 export function stompX(spec: Pick<StompSpec, "zone" | "at">): number {
   const zone = ZONES.find((z) => z.id === spec.zone);
@@ -56,7 +68,7 @@ export function auditStompables(minGap = 100): string[] {
   const hits = STREETS.map(streetX);
   const pier = ZONES.find((z) => z.id === "pier")!;
   const door = pier.start + pier.px * DOOR_AT;
-  for (const spec of STOMPABLES) {
+  for (const spec of PROP_SPECS) {
     if (spec.kind === "ledge") continue;
     const x = stompX(spec);
     const near = hits.find((h) => Math.abs(h - x) < minGap);
@@ -64,7 +76,7 @@ export function auditStompables(minGap = 100): string[] {
     if (Math.abs(door - x) < 200) problems.push(`${spec.uid} crowds the bonus door`);
     if (spec.at <= 0 || spec.at >= 1) problems.push(`${spec.uid} sits outside its zone`);
   }
-  if (new Set(STOMPABLES.map((s) => s.uid)).size !== STOMPABLES.length) problems.push("duplicate prop ids");
+  if (new Set(PROP_SPECS.map((s) => s.uid)).size !== PROP_SPECS.length) problems.push("duplicate prop ids");
   return problems;
 }
 
@@ -76,11 +88,12 @@ export type StompState =
   | "open" | "launched" | "closed"
   | "scattered" | "flight"
   | "splashed"
-  | "paying" | "paid";
+  | "paying" | "paid"
+  | Exclude<P6State, "idle">;
 
 export type StompRun = {
   key: string;
-  kind: StompKind;
+  kind: PropKind;
   /** Current world x (trolleys roll, squirted boards move). */
   world: number;
   state: StompState;
@@ -94,11 +107,14 @@ export type StompRun = {
   rollFrom: number;
   /** Ledge length in px (0 for everything else). */
   len: number;
+  /** P6 props: id of the interaction that last changed the state (drives the art). */
+  act?: string;
 };
 
 export type Tag =
   | "board:land" | "board:kickflip" | "board:360" | "board:grind" | "board:manual"
-  | "trolley:skittle" | "wheelie:launch" | "pigeons:flight" | "splash" | "meter:coins" | "rival:win";
+  | "trolley:skittle" | "wheelie:launch" | "pigeons:flight" | "splash" | "meter:coins" | "rival:win"
+  | P6Tag;
 
 export type StompResult = {
   label: string;
@@ -114,6 +130,8 @@ export type StompResult = {
   knock?: boolean;
   /** Meter: coin number just paid. */
   coin?: number;
+  /** P6 props: the interaction that produced this result (the glue caps its pay). */
+  interaction?: string;
   good: boolean;
 };
 
@@ -130,7 +148,7 @@ export const METER_MAX = 6;
 export const BUFF_MULT = 1.25;
 export const BUFF_SECONDS: Record<Timing, number> = { PERFECT: 8, GREAT: 6, OK: 4, MISS: 3 };
 
-export function newRun(key: string, kind: StompKind, world: number, len = 0): StompRun {
+export function newRun(key: string, kind: PropKind, world: number, len = 0): StompRun {
   return { key, kind, world, state: "idle", at: -99, grade: null, coins: 0, lastBeat: -999, rollFrom: world, len };
 }
 
@@ -172,6 +190,7 @@ function set(p: StompRun, state: StompState, now: number) {
  * (the press then falls through to Moss's normal moves).
  */
 export function stompProp(p: StompRun, btn: Btn, timing: Timing, now: number, beat: number): StompResult | null {
+  if (isP6Kind(p.kind)) return gestureProp(p, P6_PROPS[p.kind], btn, timing, now, beat);
   const grade: Grade | null = timing === "MISS" ? null : timing;
   const mult = grade ? GRADE_MULT[grade] : 0.5;
   switch (p.kind) {
@@ -268,8 +287,40 @@ export function stompProp(p: StompRun, btn: Btn, timing: Timing, now: number, be
   }
 }
 
+/**
+ * Generic gesture path for registry props (P6). The definition says which
+ * button does what from which state; timing comes from the same beat judge
+ * as every other prop. Returns null when no interaction uses that button
+ * (the press then falls through to Moss's normal moves).
+ */
+export function gestureProp(p: StompRun, def: PropDef, btn: Btn, timing: Timing, now: number, beat: number): StompResult | null {
+  const state = p.state as P6State;
+  const it = def.interactions.find((i) => i.gesture.btn === btn && i.from.includes(state));
+  if (!it) return null;
+  const grade: Grade | null = timing === "MISS" ? null : timing;
+  const g = it.gesture;
+  const ok = g.kind === "tap" || (meets(timing, g.minGrade) && (g.beat === "any" || isDownbeat(beat)));
+  if (!ok) {
+    if (!it.fail) return result("", 0, grade); // e.g. too early: nothing happens, try again
+    set(p, it.fail.to, now);
+    p.grade = grade;
+    p.act = `${it.id}:fail`;
+    return { ...result(it.fail.label, 0, grade), interaction: it.id };
+  }
+  set(p, it.to, now);
+  p.grade = grade;
+  p.act = it.id;
+  const points = grade ? Math.round(it.base * GRADE_MULT[grade]) : 0;
+  return { ...result(it.verb, points, grade, { tags: grade ? [...(it.emits ?? [])] : [] }), interaction: it.id };
+}
+
 /** Time-driven transitions: trolleys roll away, open lids drop, meters stop paying. */
 export function tickProp(p: StompRun, now: number, beat: number, beatDur: number): StompState {
+  if (isP6Kind(p.kind)) {
+    const timer = P6_PROPS[p.kind].timers?.find((t) => t.from === p.state);
+    if (timer && now - p.at >= timer.afterS) set(p, timer.to, now);
+    return p.state;
+  }
   if (p.state === "rolling" && now - p.at > ROLL_TIME) {
     p.state = "gone";
   } else if (p.state === "open" && now - p.at > OPEN_BEATS * beatDur + 0.2) {
