@@ -12,6 +12,8 @@ import { ROUTE_PX, ZONES, zoneSample, type ZoneId } from "../route";
 import * as K from "../sk8";
 import * as S from "../stompables";
 import { GROUND } from "./types";
+import { payFactor } from "../p6/contracts";
+import { P6_LAP_BUDGET, P6_PROPS, isP6Kind } from "../p6/props-data";
 
 export type Flyer = { kind: "coin" | "rubbish" | "feather" | "drop"; x: number; y: number; vx: number; vy: number; life: number; max: number; tone: number };
 
@@ -28,6 +30,19 @@ export type RivalRun = {
   shownBeat: number;
   /** His latest trick: button and engine time. */
   trick: { btn: Btn; at: number } | null;
+};
+
+/** Live P6 prop bookkeeping: everything the anti-farm guard needs, per lap. */
+export type P6Live = {
+  /** Scoring uses per prop instance (run key, which already carries the lap). */
+  uses: Map<string, number>;
+  /** Repeats of one interaction id per lap: `${lap}:${interaction}`. */
+  repeats: Map<string, number>;
+  /** Base points P6 props have paid per lap (checked against P6_LAP_BUDGET). */
+  lapBase: Map<number, number>;
+  /** Interactions played (paying or not) and how many of them were capped to 0. */
+  plays: number;
+  capped: number;
 };
 
 export type TrickAnim = { id: K.TrickId | "pop" | "bail"; grade: K.Grade | null; at: number };
@@ -58,6 +73,10 @@ export type P5 = {
   schoolSerial: number;
   pops: number;
   squirts: number;
+  /** Board instances (run key, per lap) that already paid their pop. Re-pops ride but pay 0. */
+  boardPaid: Set<string>;
+  repops: number;
+  p6: P6Live;
 };
 
 export function newP5(): P5 {
@@ -65,6 +84,7 @@ export function newP5(): P5 {
     sk8: K.newSk8(), stomps: new Map(), rideKey: null, trick: null, buffUntil: 0, tags: new Map(), challenges: new Set(),
     lines: new Set(), rival: null, rivalSeen: new Set(), rivalWins: 0, rivalPlayed: 0, flyers: [], landedAt: -99, lastBank: 0,
     lastLinks: [], lastBailed: false, school: [], schoolSerial: 0, pops: 0, squirts: 0,
+    boardPaid: new Set(), repops: 0, p6: { uses: new Map(), repeats: new Map(), lapBase: new Map(), plays: 0, capped: 0 },
   };
 }
 
@@ -87,7 +107,7 @@ export function stompViews(g: Arcade): StompView[] {
     return views;
   }
   const lap = Math.floor(moss / ROUTE_PX);
-  for (const spec of S.STOMPABLES) {
+  for (const spec of S.PROP_SPECS) {
     const local = S.stompX(spec);
     for (const lapK of [lap - 1, lap, lap + 1]) {
       if (lapK < 0) continue;
@@ -254,12 +274,47 @@ export function landRide(g: Arcade) {
   g.schoolEvent({ type: "ride", tricks: links.length });
 }
 
+/** Board pops pay once per board per lap: a bailed board can be re-popped and ridden, for 0. */
+function boardPopBase(g: Arcade, run: S.StompRun, res: S.StompResult): { base: number; repeat: boolean } {
+  if (run.kind !== "board" || !res.ride) return { base: res.points, repeat: false };
+  if (g.p5.boardPaid.has(run.key)) return { base: 0, repeat: true };
+  g.p5.boardPaid.add(run.key);
+  return { base: res.points, repeat: false };
+}
+
+/** P6 props: per-instance uses, per-lap repeat decay and the per-lap budget (contracts.payFactor). */
+function p6Base(g: Arcade, run: S.StompRun, res: S.StompResult): number {
+  const p6 = g.p5.p6;
+  p6.plays += 1;
+  if (!isP6Kind(run.kind) || res.points <= 0 || !res.interaction) return 0;
+  const lap = Math.floor(run.world / ROUTE_PX);
+  const repeatKey = `${lap}:${res.interaction}`;
+  const uses = p6.uses.get(run.key) ?? 0;
+  const repeats = p6.repeats.get(repeatKey) ?? 0;
+  const soFar = p6.lapBase.get(lap) ?? 0;
+  const factor = payFactor({
+    usesThisLap: uses, maxScoringUses: P6_PROPS[run.kind].maxScoringUses, repeatIndex: repeats,
+    lapPointsSoFar: soFar, lapBudget: P6_LAP_BUDGET, proposed: res.points,
+  });
+  p6.uses.set(run.key, uses + 1);
+  p6.repeats.set(repeatKey, repeats + 1);
+  const base = res.points * factor;
+  if (base <= 0) p6.capped += 1;
+  p6.lapBase.set(lap, soFar + base);
+  return base;
+}
+
 function applyResult(g: Arcade, run: S.StompRun, res: S.StompResult, x: number) {
   if (!res.label) return; // e.g. a second press on the same beat: swallowed, nothing happens
-  const points = res.points > 0 ? pointsFor(res.points * buffMult(g)) : 0;
+  const p6 = res.interaction !== undefined;
+  const pop = boardPopBase(g, run, res);
+  const base = p6 ? p6Base(g, run, res) : pop.base;
+  const points = base > 0 ? pointsFor(base * buffMult(g)) : 0;
   g.score += points;
-  if (res.good) g.meter = Math.min(1, g.meter + 0.03);
-  g.callout = res.grade && points > 0 ? `${res.label} ${res.grade}` : res.label;
+  // P6 props add no Quake Drive (a full meter opens the door); a repeat pop adds none either.
+  if (res.good && !p6 && !pop.repeat) g.meter = Math.min(1, g.meter + 0.03);
+  if (pop.repeat) g.p5.repops += 1;
+  g.callout = pop.repeat ? "RE-POP! (PAYS ONCE A LAP)" : res.grade && points > 0 ? `${res.label} ${res.grade}` : res.label;
   g.calloutLife = 0.95;
   if (points > 0) g.popups.push({ text: `+${points}`, life: 0.9, x: g.mossX() + 18, y: GROUND - 108, gold: res.grade === "PERFECT" });
   g.announce(`${res.label.toLowerCase()}${res.grade ? `, ${res.grade.toLowerCase()}` : ""}`);
@@ -272,6 +327,7 @@ function applyResult(g: Arcade, run: S.StompRun, res: S.StompResult, x: number) 
   if (res.coin) spawn(g, "coin", screen, GROUND - 40, 2 + Math.min(4, res.coin));
   if (res.tags.includes("wheelie:launch")) spawn(g, "rubbish", screen, GROUND - 36, 7);
   if (res.tags.includes("pigeons:flight")) spawn(g, "feather", screen, GROUND - 14, 8);
+  if (res.tags.includes("cone:launched")) spawn(g, "rubbish", screen, GROUND - 20, 4);
   if (res.buff) {
     g.p5.buffUntil = g.now + res.buff;
     spawn(g, "drop", screen, GROUND - 10, 10);
@@ -496,8 +552,16 @@ export function tickSk8(g: Arcade, dt: number) {
   // Forget props well behind Moss.
   const moss = g.mossWorld();
   for (const [key, run] of g.p5.stomps) {
-    if (key !== g.p5.rideKey && run.world < moss - 1600) g.p5.stomps.delete(key);
+    if (key !== g.p5.rideKey && run.world < moss - 1600) {
+      g.p5.stomps.delete(key);
+      g.p5.boardPaid.delete(key);
+      g.p5.p6.uses.delete(key);
+    }
   }
+  // P6 per-lap bookkeeping only matters for the current and previous lap.
+  const lapNow = Math.floor(moss / ROUTE_PX);
+  for (const lap of g.p5.p6.lapBase.keys()) if (lap < lapNow - 1) g.p5.p6.lapBase.delete(lap);
+  for (const key of g.p5.p6.repeats.keys()) if (Number(key.slice(0, key.indexOf(":"))) < lapNow - 1) g.p5.p6.repeats.delete(key);
 }
 
 /** Street School's board lesson: keep one board ahead of Moss until the step is cleared. */

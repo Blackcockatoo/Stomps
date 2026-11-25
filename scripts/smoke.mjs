@@ -185,6 +185,20 @@ try {
     assert.match(await mode(), /mode-strut/);
   });
 
+  await step('P6 street toy: a traffic cone sits in THE VAN and STOMP plays it (launch on the beat, topple off it)', async () => {
+    await page.waitForFunction(() => window.__moss?.mode === 'strut');
+    await page.evaluate(() => window.__moss.seek(840 - 132 - 120));
+    await page.waitForFunction(() => (window.__moss?.sk8?.p6?.cones ?? []).includes('idle'));
+    await shot(page, '04a-cone');
+    await page.evaluate(() => window.__moss.seek(840 - 132 - 10));
+    await page.keyboard.press('KeyS');
+    await page.waitForFunction(() => window.__moss.sk8.p6.plays >= 1, null, { timeout: 3000 });
+    const state = await page.evaluate(() => window.__moss.sk8.p6.cones[0]);
+    assert.ok(['airborne', 'toppled', 'spent'].includes(state), 'cone reacted: ' + state);
+    await page.waitForTimeout(200);
+    await shot(page, '04a-cone-played');
+  });
+
   await step('SK8 STOMP: a board sits at the van; a tail stomp pops it (or squirts it ahead off the beat)', async () => {
     await page.waitForFunction(() => window.__moss?.mode === 'strut');
     await page.evaluate(() => window.__moss.seek(420 - 132));

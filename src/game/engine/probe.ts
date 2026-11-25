@@ -23,7 +23,8 @@ export function installProbe(g: Arcade) {
       const p = self.p5;
       return { riding: !!p.sk8.ride, links: p.sk8.ride?.links.length ?? 0, style: Number(p.sk8.style.toFixed(2)), landed: p.sk8.landed,
         bails: p.sk8.bails, pops: p.pops, squirts: p.squirts, toys: self.stompViews().filter((v) => v.run.kind !== "ledge").length,
-        rival: p.rival ? (p.rival.done ? "done" : "on") : null, lines: p.lines.size, challenges: p.challenges.size };
+        rival: p.rival ? (p.rival.done ? "done" : "on") : null, lines: p.lines.size, challenges: p.challenges.size,
+        repops: p.repops, p6: { plays: p.p6.plays, capped: p.p6.capped, cones: self.stompViews().filter((v) => v.run.kind === "cone").map((v) => v.run.state) } };
     },
     get meter() { return self.meter; },
     get clip() { return self.currentClip(); },
